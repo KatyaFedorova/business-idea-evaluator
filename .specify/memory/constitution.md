@@ -1,6 +1,6 @@
 <!--
 Sync Impact Report
-Version change: none (unversioned template) → 1.0.0
+Version change: none (unversioned template) → 1.0.0 → 1.0.1 (PATCH: named the cost ceilings)
 Modified principles:
   [PRINCIPLE_1_NAME] → I. Test-First (NON-NEGOTIABLE)
   [PRINCIPLE_2_NAME] → II. Schema-Validated Model Output
@@ -12,8 +12,7 @@ Added sections:
   Development Workflow (was [SECTION_3_NAME])
 Removed sections: none
 Deferred TODOs:
-  TODO(COST_CEILING): the per-evaluation USD ceiling is named in Principle III but not
-  yet chosen; set it before the first feature that spends against it.
+  (closed in 1.0.1: the ceilings are $1.50 per round and $5.00 per session)
   Eval-suite gating was offered and not adopted; evals remain encouraged, not governed.
 This report is scratch material for reviewing the amendment and should be deleted
 before committing the amended file.
@@ -135,4 +134,4 @@ Complexity that appears to violate Principle IV MUST be justified in the feature
 or removed. Unresolved `TODO(...)` markers in this document are open governance debt and
 SHOULD be closed before the feature that depends on them is planned.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-21 | **Last Amended**: 2026-09-21
+**Version**: 1.0.1 | **Ratified**: 2026-09-21 | **Last Amended**: 2026-09-21

@@ -1,11 +1,31 @@
-/* Business Idea Evaluator -- front-end.
-   Talks to the FastAPI backend: POST /api/evaluate (JSON) and POST /api/chat (streamed text).
-   Add ?demo=1 to the URL to render a canned report with no API key and no backend. */
+/* Business Idea Evaluator -- front end.
+
+   Two panes: the idea on the left, the conversation on the right. The server keeps
+   nothing, so this file owns the session and stores it in IndexedDB. */
+
+import {
+  addAttachments,
+  appendRound,
+  canAnswer,
+  fileIds,
+  lastReport,
+  newSession,
+  phase,
+  removeAttachment,
+  reviseIdea,
+  verdictPayload,
+} from "./session.js";
 
 const $ = (id) => document.getElementById(id);
-const DEMO = new URLSearchParams(location.search).has("demo");
+const DB_NAME = "bie";
+const STORE = "sessions";
+const KEY = "current";
 
-const state = { evaluation: null, idea: "", history: [] };
+let session = newSession();
+let limits = null;
+let busy = false;
+let lastAttempt = null;
+let timer = null;
 
 const SAMPLE =
   "A subscription iOS app for people who doomscroll. It watches TikTok and Instagram usage " +
@@ -13,259 +33,416 @@ const SAMPLE =
   "your own voice shaming you until you close the app. $4.99/month, aimed at 20-35 year olds " +
   "who have already tried and abandoned three screen-time blockers.";
 
-/* ---------- rendering ---------- */
-function show(id, visible) {
-  $(id).classList.toggle("hidden", !visible);
+/* ----------------------------- storage ----------------------------- */
+function openDb() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, 1);
+    request.onupgradeneeded = () => request.result.createObjectStore(STORE);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
 }
 
-function esc(s) {
+async function save() {
+  try {
+    const db = await openDb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, "readwrite");
+      tx.objectStore(STORE).put(session, KEY);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch {
+    /* A session that cannot be stored is still a usable session. */
+  }
+}
+
+async function restore() {
+  try {
+    const db = await openDb();
+    const stored = await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, "readonly");
+      const get = tx.objectStore(STORE).get(KEY);
+      get.onsuccess = () => resolve(get.result);
+      get.onerror = () => reject(get.error);
+    });
+    if (stored && stored.rounds) session = stored;
+  } catch {
+    /* ignore */
+  }
+}
+
+/* ----------------------------- rendering ----------------------------- */
+function esc(value) {
   const d = document.createElement("div");
-  d.textContent = s == null ? "" : String(s);
+  d.textContent = value == null ? "" : String(value);
   return d.innerHTML;
 }
 
-const DIM_LABELS = {
-  problem_severity: "Problem severity",
-  market_size: "Market size",
-  differentiation: "Differentiation",
-  feasibility: "Feasibility",
-  monetization: "Monetization",
-};
+function money(value) {
+  return `$${Number(value || 0).toFixed(4)}`;
+}
 
-function renderReport(result) {
-  const e = result.evaluation;
-  state.evaluation = e;
+function turn(who, bodyHtml, extraClass = "") {
+  const wrap = document.createElement("div");
+  wrap.className = `msg ${extraClass}`.trim();
+  wrap.innerHTML = `<div class="who">${esc(who)}</div><div class="body">${bodyHtml}</div>`;
+  return wrap;
+}
 
-  $("verdictText").textContent = e.verdict.toUpperCase();
-  $("verdictBox").className = "verdict verdict-" + e.verdict;
-  $("overallScore").textContent = e.overall_score;
-  $("headline").textContent = e.headline;
-
-  $("dimensionRows").innerHTML = e.dimensions
-    .map(
-      (d) => `<tr>
-        <td><b>${esc(DIM_LABELS[d.name] || d.name)}</b></td>
-        <td>${d.score}/10 <div class="meter"><i style="width:${d.score * 10}%"></i></div></td>
-        <td>${esc(d.rationale)}</td>
-      </tr>`
-    )
+function questionsHtml(round) {
+  const note = round.questions.note
+    ? `<div class="reask-note">${esc(round.questions.note)}</div>`
+    : "";
+  const items = round.questions.questions
+    .map((q) => `<li>${esc(q.text)}</li>`)
     .join("");
-
-  $("targetCustomer").textContent = e.target_customer;
-  $("riskiestAssumption").textContent = e.riskiest_assumption;
-  $("firstExperiment").textContent = e.first_experiment;
-  $("comparables").textContent = (e.comparable_companies || []).join(", ") || "none named";
-
-  $("riskRows").innerHTML = e.risks
-    .map(
-      (r) => `<tr>
-        <td><b>${esc(r.title)}</b></td>
-        <td class="sev-${esc(r.severity)}">${esc(r.severity.toUpperCase())}</td>
-        <td>${esc(r.mitigation)}</td>
-      </tr>`
-    )
-    .join("");
-
-  const u = result.usage || {};
-  $("runStats").textContent =
-    `model: ${u.model || "?"}  |  prompt: ${result.prompt_version || "?"}  |  ` +
-    `${u.input_tokens || 0} in / ${u.output_tokens || 0} out tokens  |  ` +
-    `${((u.latency_ms || 0) / 1000).toFixed(1)}s  |  $${(u.cost_usd || 0).toFixed(4)}`;
-
-  show("report", true);
-  show("chatBox", true);
+  return `${note}<ol class="qlist">${items}</ol>
+    <div class="cost">${esc(round.usage ? round.usage.model : "")} &middot; ${money(round.cost_usd)}</div>`;
 }
 
-/* ---------- evaluate ---------- */
-let timer = null;
-function startTimer() {
-  const t0 = Date.now();
-  $("elapsed").textContent = "0.0s";
-  timer = setInterval(() => {
-    $("elapsed").textContent = ((Date.now() - t0) / 1000).toFixed(1) + "s";
-  }, 100);
-}
-function stopTimer() {
-  if (timer) clearInterval(timer);
-  timer = null;
-}
-
-async function evaluate() {
-  const idea = $("idea").value.trim();
-  if (idea.length < 15) {
-    fail("Please describe the idea in at least a sentence or two.");
-    return;
+function verdictLine(report) {
+  if (report.verdict === "PROCEED_ONLY_AFTER_TESTING") {
+    return `PROCEED ONLY AFTER TESTING ${report.verdict_condition || ""}`.trim();
   }
-  state.idea = idea;
-  state.history = [];
-  $("transcript").innerHTML = "";
-  show("error", false);
-  show("report", false);
-  show("chatBox", false);
-  show("loading", true);
-  $("evaluateBtn").disabled = true;
-  startTimer();
-
-  try {
-    const result = DEMO ? await demoResult(idea) : await postEvaluate(idea);
-    renderReport(result);
-  } catch (err) {
-    fail(err.message || String(err));
-  } finally {
-    stopTimer();
-    show("loading", false);
-    $("evaluateBtn").disabled = false;
-  }
+  return report.verdict === "DONT_PROCEED" ? "DON'T PROCEED" : "PROCEED";
 }
 
-async function postEvaluate(idea) {
-  const res = await fetch("/api/evaluate", {
+function list(items) {
+  return `<ul>${items.map((i) => `<li>${i}</li>`).join("")}</ul>`;
+}
+
+function reportHtml(round) {
+  const r = round.report;
+  const fails = [...r.fails_because]
+    .sort((a, b) => a.rank - b.rank)
+    .map((f) => `${esc(f.text)}${f.is_guess ? ' <span class="guess">(guess)</span>' : ""}`);
+  const plan = r.validation_plan;
+  const research = r.research_directions.map((d) => {
+    const who = d.competitor ? ` <b>${esc(d.competitor)}</b>` : "";
+    const what = d.what_to_check ? ` &mdash; ${esc(d.what_to_check)}` : "";
+    return `${esc(d.question)}${who} <span class="small">(${esc(d.where_to_look)})</span>${what}`;
+  });
+
+  const sources = round.sources && round.sources.length
+    ? `<h4>Sources</h4><div class="sources">${round.sources
+        .map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title || s.url)}</a>`)
+        .join("<br>")}</div>`
+    : "";
+  const degraded = round.research_status !== "ok"
+    ? `<div class="degraded">Research was ${esc(round.research_status)} for this round, so any
+       claim without a source above is unverified.</div>`
+    : "";
+  const contradictions = r.contradictions.length
+    ? `<h4>Contradictions in your answers</h4>${list(r.contradictions.map(esc))}`
+    : "";
+  const priorArt = r.prior_art.length
+    ? `<h4>This already exists as</h4>${list(r.prior_art.map(esc))}`
+    : "";
+  const missing = r.missing_data.length
+    ? `<h4>Data neither of us has</h4>${list(r.missing_data.map(esc))}`
+    : "";
+
+  return `<div class="report">
+    <div class="verdict-line">${esc(verdictLine(r))}</div>
+    <div><b>Confidence:</b> ${esc(r.confidence)} &mdash; ${esc(r.confidence_movers)}</div>
+    <h4>Works because</h4>${list(r.works_because.map(esc))}
+    <h4>Fails because</h4><ol class="qlist">${fails.map((f) => `<li>${f}</li>`).join("")}</ol>
+    <h4>Riskiest assumption</h4><div>${esc(r.riskiest_assumption)}</div>
+    <h4>Validation plan (${esc(plan.duration_days)} days, no code)</h4>
+    ${list(plan.steps.map(esc))}
+    <div><b>Talk to:</b> ${esc(plan.who_to_talk_to)}</div>
+    <div><b>Pass:</b> ${esc(plan.pass_threshold)}</div>
+    <div><b>Fail:</b> ${esc(plan.fail_threshold)}</div>
+    <h4>Research to do</h4>${list(research)}
+    <h4>Kill criteria</h4>${list(r.kill_criteria.map(esc))}
+    ${contradictions}${priorArt}${missing}${sources}${degraded}
+    <div class="cost">${esc(round.usage ? round.usage.model : "")} &middot; ${money(round.cost_usd)}</div>
+  </div>`;
+}
+
+function render() {
+  const transcript = $("transcript");
+  transcript.innerHTML = "";
+
+  if (session.rounds.length === 0) {
+    transcript.appendChild(
+      turn(
+        "EVALUATOR",
+        "Describe your idea on the left and press START. I ask questions first. You get no verdict until you answer them.",
+        "bot evaluator"
+      )
+    );
+  }
+
+  session.rounds.forEach((round) => {
+    (round.submission || []).forEach((message) => {
+      if (message.text && message.text.trim()) {
+        transcript.appendChild(turn("YOU", esc(message.text).replace(/\n/g, "<br>"), "user"));
+      }
+      (message.attachment_ids || []).forEach((id) => {
+        const found = session.attachments.find((a) => a.id === id);
+        if (found) {
+          transcript.appendChild(
+            turn("YOU", `<i>attached ${esc(found.filename)}</i>`, "user")
+          );
+        }
+      });
+    });
+    if (round.questions) {
+      transcript.appendChild(turn("EVALUATOR", questionsHtml(round), "bot evaluator"));
+    }
+    if (round.report) {
+      transcript.appendChild(turn("EVALUATOR", reportHtml(round), "bot evaluator"));
+    }
+  });
+
+  session.revisions.forEach((rev) => {
+    transcript.appendChild(
+      turn("SYSTEM", `You revised the idea: ${esc(rev.current)}`, "system")
+    );
+  });
+
+  transcript.scrollTop = transcript.scrollHeight;
+
+  const started = session.rounds.length > 0;
+  $("startBtn").disabled = busy || started;
+  $("reviseBtn").classList.toggle("hidden", !started);
+  $("sendBtn").disabled = busy || !canAnswer(session);
+  $("verdictBtn").disabled = busy || !canAnswer(session);
+  $("copyBtn").classList.toggle("hidden", !lastReport(session));
+  $("runStats").textContent = started
+    ? `${session.rounds.length} round(s) · ${money(session.totalCostUsd)} this session`
+    : " ";
+  renderAttachments();
+}
+
+function renderAttachments() {
+  const list = $("attachList");
+  list.innerHTML = "";
+  session.attachments.forEach((a) => {
+    const li = document.createElement("li");
+    const state = a.readable ? "" : ` — could not be read: ${a.error || "unknown"}`;
+    li.innerHTML = `${esc(a.filename)} <span class="small">(${Math.round(a.size_bytes / 1024)} KB)${esc(state)}</span>`;
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = "x";
+    remove.onclick = async () => {
+      session = removeAttachment(session, a.id);
+      await save();
+      render();
+    };
+    li.appendChild(remove);
+    list.appendChild(li);
+  });
+}
+
+/* ----------------------------- plumbing ----------------------------- */
+function setBusy(on, what = "Thinking…") {
+  busy = on;
+  $("waiting").classList.toggle("hidden", !on);
+  $("waitingText").textContent = what;
+  if (on) {
+    const start = Date.now();
+    timer = setInterval(() => {
+      $("elapsed").textContent = `${((Date.now() - start) / 1000).toFixed(1)}s`;
+    }, 100);
+  } else if (timer) {
+    clearInterval(timer);
+    timer = null;
+  }
+  render();
+}
+
+function showError(message, retryable) {
+  $("errorText").textContent = message;
+  $("errorBox").classList.remove("hidden");
+  $("retryBtn").classList.toggle("hidden", !retryable);
+}
+
+function clearError() {
+  $("errorBox").classList.add("hidden");
+}
+
+async function post(path, body) {
+  const response = await fetch(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ idea }),
+    body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    const detail = await res.text();
-    throw new Error(`Server said ${res.status}: ${detail.slice(0, 300)}`);
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    const error = (payload && payload.error) || {
+      message: "Something went wrong. Try again.",
+      retryable: true,
+    };
+    const failure = new Error(error.message);
+    failure.retryable = error.retryable;
+    throw failure;
   }
-  return res.json();
+  return payload;
 }
 
-function fail(msg) {
-  $("errorText").textContent = msg;
-  show("error", true);
-}
-
-/* ---------- chat ---------- */
-async function send() {
-  const text = $("chatInput").value.trim();
-  if (!text) return;
-  $("chatInput").value = "";
-  addMessage("user", text);
-  state.history.push({ role: "user", content: text });
-
-  const bubble = addMessage("bot", "");
-  $("sendBtn").disabled = true;
-
-  try {
-    if (DEMO) {
-      await typeInto(bubble, "Demo mode: start the backend (uvicorn) to chat with Claude.");
-    } else {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          idea: state.idea,
-          evaluation: state.evaluation,
-          messages: state.history,
-        }),
-      });
-      if (!res.ok) throw new Error(`Server said ${res.status}`);
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let acc = "";
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        acc += decoder.decode(value, { stream: true });
-        bubble.textContent = acc;
-        $("transcript").scrollTop = $("transcript").scrollHeight;
-      }
-    }
-    state.history.push({ role: "assistant", content: bubble.textContent });
-  } catch (err) {
-    bubble.textContent = "[error] " + (err.message || err);
-  } finally {
-    $("sendBtn").disabled = false;
-    $("chatInput").focus();
-  }
-}
-
-function addMessage(who, text) {
-  const wrap = document.createElement("p");
-  wrap.className = "msg " + who;
-  wrap.innerHTML = `<span class="who">${who === "user" ? "YOU" : "THE ANALYST"}:</span> `;
-  const body = document.createElement("span");
-  body.className = "body";
-  body.textContent = text;
-  wrap.appendChild(body);
-  $("transcript").appendChild(wrap);
-  $("transcript").scrollTop = $("transcript").scrollHeight;
-  return body;
-}
-
-async function typeInto(el, text) {
-  for (const ch of text) {
-    el.textContent += ch;
-    await new Promise((r) => setTimeout(r, 12));
-  }
-}
-
-/* ---------- demo data (no API key needed) ---------- */
-async function demoResult(idea) {
-  await new Promise((r) => setTimeout(r, 900));
+function roundFrom(payload, index, submission) {
   return {
-    idea,
-    prompt_version: "demo",
-    evaluation: {
-      headline: "Sharp hook, thin moat, and the platform owns your distribution.",
-      verdict: "refine",
-      overall_score: 54,
-      dimensions: [
-        { name: "problem_severity", score: 8, rationale: "Doomscrolling regret is widely felt and people already pay to fix it." },
-        { name: "market_size", score: 6, rationale: "Screen-time tooling is a real but crowded consumer niche with low willingness to pay." },
-        { name: "differentiation", score: 7, rationale: "Self-recorded shaming audio is memorable and hard to copy emotionally, easy to copy technically." },
-        { name: "feasibility", score: 4, rationale: "iOS will not let a background extension talk over another app; the core promise is platform-limited." },
-        { name: "monetization", score: 5, rationale: "$4.99/month is plausible but churn is brutal once the novelty wears off." },
-      ],
-      target_customer: "20-35 year olds who have already abandoned three screen-time blockers.",
-      riskiest_assumption: "That the shaming audio can reach the user at the moment of scrolling, rather than after.",
-      risks: [
-        { title: "Platform restriction", severity: "high", mitigation: "Design around notifications and re-entry audio; validate with a TestFlight build before building billing." },
-        { title: "Novelty churn", severity: "high", mitigation: "Measure week-4 retention in a 200-user cohort before any paid acquisition." },
-        { title: "Trivial to clone", severity: "medium", mitigation: "Build the voice library and streak data into a switching cost." },
-      ],
-      first_experiment: "Ship a free TestFlight build to 100 users and measure day-14 retention before writing a payment screen.",
-      comparable_companies: ["Opal", "one sec", "Freedom", "Forest"],
-    },
-    usage: { model: "demo", input_tokens: 0, output_tokens: 0, latency_ms: 900, cost_usd: 0 },
+    index,
+    kind: payload.kind,
+    submission,
+    questions: payload.questions || null,
+    report: payload.report || null,
+    sources: payload.sources || [],
+    research_status: payload.research_status || "unavailable",
+    usage: payload.usage || null,
+    cost_usd: payload.cost_usd || 0,
   };
 }
 
-/* ---------- wiring ---------- */
-$("evaluateBtn").addEventListener("click", evaluate);
-$("sampleBtn").addEventListener("click", () => { $("idea").value = SAMPLE; });
-$("clearBtn").addEventListener("click", () => {
-  $("idea").value = "";
-  show("report", false);
-  show("chatBox", false);
-  show("error", false);
-});
-$("sendBtn").addEventListener("click", send);
-$("chatInput").addEventListener("keydown", (e) => { if (e.key === "Enter") send(); });
-if (DEMO) $("runStats").textContent = "demo mode";
-
-/* ?demo=1&auto=1 renders a full report on load -- used for screenshots and the docs page. */
-if (DEMO && new URLSearchParams(location.search).has("auto")) {
-  $("idea").value = SAMPLE;
-  evaluate();
+/* ----------------------------- actions ----------------------------- */
+async function start() {
+  const idea = $("idea").value.trim();
+  if (limits && idea.length < limits.min_idea_chars) {
+    showError(`Tell us a bit more — at least ${limits.min_idea_chars} characters.`, false);
+    return;
+  }
+  clearError();
+  session = { ...session, idea };
+  lastAttempt = start;
+  setBusy(true, "Reading your idea…");
+  try {
+    const payload = await post("/api/questions", {
+      idea,
+      attachments: session.attachments,
+    });
+    const round = roundFrom(payload, 0, [
+      { text: idea, attachment_ids: session.attachments.map((a) => a.id) },
+    ]);
+    session = appendRound(session, round);
+    await save();
+    clearError();
+  } catch (error) {
+    showError(error.message, error.retryable !== false);
+  } finally {
+    setBusy(false);
+  }
 }
 
-/* Sparkle cursor trail. Peak 1999, and the one effect the page would be poorer without. */
-(function sparkleTrail() {
-  const COLORS = ["#ff3399", "#ffee00", "#00ccff", "#33cc33", "#9933ff"];
-  let last = 0;
-  document.addEventListener("mousemove", (e) => {
-    const now = Date.now();
-    if (now - last < 45) return; // don't carpet the page
-    last = now;
-    const s = document.createElement("span");
-    s.className = "sparkle";
-    s.textContent = "✦";
-    s.style.left = e.pageX + "px";
-    s.style.top = e.pageY + "px";
-    s.style.color = COLORS[Math.floor(Math.random() * COLORS.length)];
-    document.body.appendChild(s);
-    setTimeout(() => s.remove(), 700);
+async function send(forVerdict) {
+  const text = $("answer").value.trim();
+  if (!text && !forVerdict) return;
+  clearError();
+  lastAttempt = () => send(forVerdict);
+  const pending = session.attachments
+    .filter((a) => !session.rounds.some((r) => (r.submission || []).some((m) => (m.attachment_ids || []).includes(a.id))))
+    .map((a) => a.id);
+  const answers = [{ text, attachment_ids: pending }];
+  setBusy(true, "Researching and thinking…");
+  try {
+    const payload = await post("/api/verdict", verdictPayload(session, answers));
+    session = appendRound(session, roundFrom(payload, session.rounds.length, answers));
+    $("answer").value = "";
+    await save();
+  } catch (error) {
+    showError(error.message, error.retryable !== false);
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function uploadFiles(files) {
+  if (!files.length) return;
+  clearError();
+  const form = new FormData();
+  [...files].forEach((file) => form.append("files", file));
+  setBusy(true, "Reading your files…");
+  try {
+    const response = await fetch("/api/attachments", { method: "POST", body: form });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      const error = (payload && payload.error) || { message: "That file was not accepted." };
+      showError(error.message, false);
+      return;
+    }
+    session = addAttachments(session, payload.attachments);
+    const unreadable = payload.attachments.filter((a) => !a.readable);
+    if (unreadable.length) {
+      showError(
+        `Could not read ${unreadable.map((a) => a.filename).join(", ")}. Send without them, or remove and try again.`,
+        false
+      );
+    }
+    await save();
+  } finally {
+    setBusy(false);
+    $("fileInput").value = "";
+  }
+}
+
+async function clearSession() {
+  const ids = fileIds(session);
+  if (ids.length) {
+    fetch("/api/attachments", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ file_ids: ids }),
+    }).catch(() => {});
+  }
+  session = newSession();
+  $("idea").value = "";
+  $("answer").value = "";
+  clearError();
+  await save();
+  render();
+}
+
+function copyReport() {
+  const report = lastReport(session);
+  if (!report) return;
+  const text = $("transcript").querySelector(".report").innerText;
+  navigator.clipboard.writeText(text).then(
+    () => ($("runStats").textContent = "Report copied to the clipboard."),
+    () => showError("Could not copy. Select the report and copy manually.", false)
+  );
+}
+
+/* ----------------------------- wiring ----------------------------- */
+async function init() {
+  try {
+    limits = await (await fetch("/api/limits")).json();
+    if (limits) {
+      $("attachHint").textContent =
+        `Spreadsheets, images, PDFs or text. Up to ${limits.max_attachments} files, ` +
+        `${Math.round(limits.max_attachment_bytes / (1024 * 1024))} MB each.`;
+      $("ideaHint").textContent =
+        `At least ${limits.min_idea_chars} characters. Two to four sentences beats one word.`;
+    }
+  } catch {
+    /* the page still works; the server will enforce the limits anyway */
+  }
+
+  await restore();
+  if (session.idea) $("idea").value = session.idea;
+
+  $("startBtn").onclick = start;
+  $("sendBtn").onclick = () => send(false);
+  $("verdictBtn").onclick = () => send(true);
+  $("sampleBtn").onclick = () => {
+    $("idea").value = SAMPLE;
+  };
+  $("clearBtn").onclick = clearSession;
+  $("copyBtn").onclick = copyReport;
+  $("retryBtn").onclick = () => lastAttempt && lastAttempt();
+  $("fileInput").onchange = (event) => uploadFiles(event.target.files);
+  $("reviseBtn").onclick = async () => {
+    session = reviseIdea(session, $("idea").value);
+    await save();
+    render();
+  };
+  $("answer").addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) send(false);
   });
-})();
+
+  render();
+}
+
+init();
+export { phase };

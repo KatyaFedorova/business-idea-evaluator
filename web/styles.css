@@ -176,24 +176,6 @@ table.data td {
 }
 table.data tr:nth-child(even) td { background: var(--pink-pale); }
 
-.meter { background: #fff; border: 1px solid #000; height: 12px; width: 100px; margin-top: 3px; }
-.meter i { display: block; height: 100%; background: linear-gradient(90deg, var(--navy), var(--pink)); }
-
-.verdict {
-  border: 3px ridge var(--pink-mid);
-  background: var(--yellow-p);
-  padding: 12px;
-  margin-bottom: 12px;
-  text-align: center;
-  font-family: "Comic Sans MS", "Chalkboard SE", cursive;
-}
-.verdict #verdictText { font-size: 28px; color: var(--navy); text-shadow: 2px 2px 0 #fff; }
-.verdict-pursue #verdictText { color: #007700; }
-.verdict-refine #verdictText { color: #cc0066; }
-.verdict-pivot  #verdictText { color: #cc6600; }
-.verdict-drop   #verdictText { color: #cc0000; }
-.verdict span:last-child { font-family: Verdana, sans-serif; font-size: 13px; color: #333; }
-
 .sev-high { color: #cc0000; font-weight: bold; }
 .sev-medium { color: #cc6600; font-weight: bold; }
 .sev-low { color: #007700; font-weight: bold; }
@@ -294,3 +276,50 @@ hr.fancy {
 /* the marquee is now the hire-me banner, so its links need to read at a glance */
 .marquee a { color: #ffff66; text-decoration: underline; font-weight: bold; }
 .marquee a:hover { color: #fff; background: #99004d; }
+
+
+/* ---- two panes: idea on the left, conversation on the right ---- */
+#panes { display: flex; gap: 14px; align-items: flex-start; }
+#ideaPane { flex: 0 0 41%; min-width: 0; }
+#chatPane { flex: 1 1 auto; min-width: 0; }
+#chatPane fieldset { display: flex; flex-direction: column; }
+#transcript {
+  min-height: 260px; max-height: 52vh; overflow-y: auto;
+  border: 2px inset #c0c0c0; background: #fff; padding: 6px; margin-bottom: 8px;
+}
+#composer textarea { width: 100%; box-sizing: border-box; }
+#attachBox { margin: 10px 0 6px; }
+#attachList { list-style: none; margin: 6px 0 0; padding: 0; font-size: 12px; }
+#attachList li { padding: 2px 0; }
+#attachList button { font-size: 10px; padding: 0 4px; margin-left: 6px; }
+.warn { color: #7a0000; }
+#errorBox { border: 2px solid #cc0000; background: #ffe8e8; padding: 6px; margin-bottom: 8px; }
+.errline { color: #cc0000; font-family: Verdana, sans-serif; font-size: 12px; margin-bottom: 6px; }
+
+/* ---- turns ---- */
+.msg.evaluator .who { color: #000080; }
+.msg.system { opacity: .8; font-style: italic; }
+.msg .cost { font-size: 11px; color: #555; }
+.qlist { margin: 4px 0 0 18px; padding: 0; }
+.qlist li { margin: 3px 0; }
+.reask-note { background: #ffffcc; border: 1px solid #999900; padding: 4px; margin-bottom: 6px; }
+
+/* ---- the report ---- */
+.verdict-line {
+  font-family: "Courier New", monospace; font-weight: bold; font-size: 18px;
+  background: #000080; color: #ffff00; padding: 6px 8px; margin-bottom: 8px;
+}
+.report h4 { margin: 10px 0 3px; font-size: 13px; text-transform: uppercase; }
+.report ul { margin: 0 0 0 18px; padding: 0; }
+.report .guess { color: #555; font-style: italic; }
+.sources { font-size: 11px; }
+.sources a { word-break: break-all; }
+.degraded { background: #ffffcc; border: 1px solid #999900; padding: 4px; margin-top: 8px; }
+
+@media (max-width: 820px) {
+  #panes { display: block; }
+  #ideaPane, #chatPane { width: auto; }
+  #chatPane { margin-top: 12px; }
+  #transcript { max-height: none; }
+  body { overflow-x: hidden; }
+}

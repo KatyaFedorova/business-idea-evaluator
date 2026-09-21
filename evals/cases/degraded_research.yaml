@@ -1,0 +1,14 @@
+name: a verdict still arrives when research is thin
+phase: verdict
+note: >-
+  Run this case with network access to search blocked, or with BIE_MAX_SEARCHES set so
+  low that research cannot complete, to exercise the degraded path.
+idea: >-
+  A niche marketplace for antique typewriter parts, shipping worldwide, 15 percent fee.
+answers: >-
+  1. Collectors restoring pre-1960 machines. 2. They trawl eBay and forums.
+  3. Four collectors paid deposits. 4. I own the largest parts inventory in the country.
+  5. Part time, $5,000. 6. Two collector forums. 7. If deposits do not convert in a
+  month, I am wrong.
+graders:
+  - degraded_research_is_declared

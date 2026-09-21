@@ -1,0 +1,12 @@
+name: contradictions in the founder's own answers are named
+phase: verdict
+idea: >-
+  A $49-a-month coaching app for freelance designers who want to raise their rates.
+answers: >-
+  1. Freelance designers earning under $30k a year who cannot afford coaching.
+  2. They read free blog posts. 3. Twelve people already pay me $200 a month for this.
+  4. I have no design background. 5. Full time, $50,000 saved. 6. Cold email.
+  7. If nobody replies to fifty cold emails I am wrong.
+graders:
+  - names_contradiction
+  - report_structure

@@ -7,3 +7,6 @@ __pycache__/
 dist/
 runs/
 site/
+*.egg-info/
+.DS_Store
+sessions/

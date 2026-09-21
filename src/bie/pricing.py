@@ -16,6 +16,11 @@ PRICES: dict[str, tuple[float, float]] = {
     "claude-haiku-4-5": (1.00, 5.00),
 }
 
+# Web search is billed on top of tokens: $10 per 1,000 searches on the Claude API.
+# Errors are not billed. Verified 2026-09-21 against
+# https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool
+WEB_SEARCH_COST_PER_SEARCH_USD = 10.0 / 1000
+
 # Cached input is billed at a fraction of the base input rate.
 CACHE_WRITE_MULTIPLIER = 1.25
 CACHE_READ_MULTIPLIER = 0.10
@@ -27,12 +32,18 @@ def cost_usd(
     output_tokens: int,
     cache_write_tokens: int = 0,
     cache_read_tokens: int = 0,
+    web_searches: int = 0,
 ) -> float:
-    """Dollar cost of one request. Unknown models cost 0.0 rather than crashing a run."""
+    """Dollar cost of one request, tokens plus server-tool use.
+
+    An unknown model contributes no token cost rather than crashing a run, but its
+    searches are still billed, because those are priced per search and not per model.
+    """
+    search_cost = web_searches * WEB_SEARCH_COST_PER_SEARCH_USD
     if model not in PRICES:
-        return 0.0
+        return search_cost
     in_rate, out_rate = PRICES[model]
-    return (
+    return search_cost + (
         input_tokens * in_rate
         + cache_write_tokens * in_rate * CACHE_WRITE_MULTIPLIER
         + cache_read_tokens * in_rate * CACHE_READ_MULTIPLIER

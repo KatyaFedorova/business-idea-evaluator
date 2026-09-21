@@ -1,0 +1,15 @@
+name: the verdict uses the attached numbers
+phase: verdict
+attachments:
+  - fixtures/preorders.csv
+idea: >-
+  A subscription app that shames you with your own voice when you doomscroll. $4.99 a
+  month. I ran a pre-order test and attached the numbers.
+answers: >-
+  1. People who abandoned three blockers. 2. They uninstall and reinstall.
+  3. See the attached pre-order sheet. 4. I have the Screen Time integration working.
+  5. Ten hours a week. 6. TikTok. 7. The attached conversion rate tells me.
+graders:
+  - name: references_attachment
+    needles: ["14", "180"]
+  - report_structure
