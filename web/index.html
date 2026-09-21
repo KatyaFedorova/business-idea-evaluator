@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>:: Business Idea Evaluator ::</title>
-<meta name="viewport" content="width=800">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -12,7 +12,7 @@
 
   <div id="banner">
     <h1>Business Idea Evaluator</h1>
-    <div class="sub">~*~ Your Idea. Scored By A Machine. Since 2001 ~*~</div>
+    <div class="sub">~*~ Tell It Your Idea. It Asks First, Judges Second. Since 2001 ~*~</div>
   </div>
 
   <div class="marquee"><span>
@@ -24,110 +24,99 @@
   </span></div>
 
   <div id="main">
-      <fieldset>
-        <legend>Step 1 &raquo; Describe Your Business Idea <span class="hot">HOT!</span></legend>
-        <label for="idea">What are you building, for whom, and how does it make money?</label>
-        <textarea id="idea" placeholder="e.g. A subscription app that plays a recording of your own voice shaming you when you doomscroll past your daily limit."></textarea>
-        <div class="small" style="margin:4px 0 8px">Tip: 2-4 sentences beats 1 word. The machine scores what you tell it.</div>
-        <div class="row">
-          <div style="flex:0 0 auto">
-            <button id="evaluateBtn" type="button">&raquo; EVALUATE MY IDEA &laquo;</button>
-          </div>
-          <div style="flex:0 0 auto">
-            <button id="sampleBtn" type="button">Load Example</button>
-          </div>
-          <div style="flex:0 0 auto">
-            <button id="clearBtn" type="button">Clear</button>
-          </div>
-        </div>
-      </fieldset>
-      <div id="loading" class="hidden">
+
+    <div id="panes">
+
+      <!-- ---------------------------- idea pane ---------------------------- -->
+      <div id="ideaPane">
         <fieldset>
-          <legend>Please wait</legend>
-          <div class="waiting"><span class="blink">&#9654;&#9654;&#9654;</span> Consulting the machine&hellip; <span id="elapsed">0.0s</span></div>
-        </fieldset>
-      </div>
+          <legend>Your Business Idea <span class="hot">HOT!</span></legend>
+          <label for="idea">What are you building, for whom, and how does it make money?</label>
+          <textarea id="idea" placeholder="e.g. A subscription app that plays a recording of your own voice shaming you when you doomscroll past your daily limit."></textarea>
+          <div class="small" id="ideaHint">Two to four sentences beats one word. The machine interrogates what you tell it.</div>
 
-      <div id="error" class="hidden">
-        <fieldset style="border-color:#cc0000">
-          <legend style="background:#ffcccc">Error</legend>
-          <div id="errorText" style="font-family:Verdana,sans-serif;font-size:12px;color:#cc0000"></div>
-        </fieldset>
-      </div>
-
-      <div id="report" class="hidden">
-        <fieldset>
-          <legend>Step 2 &raquo; The Verdict</legend>
-
-          <div class="verdict" id="verdictBox">
-            <span id="verdictText">&mdash;</span><br>
-            <span style="font-size:14px;font-family:Verdana,sans-serif">Overall score: <b id="overallScore">0</b>/100</span>
+          <div id="attachBox">
+            <label for="fileInput">Evidence (optional)</label>
+            <input type="file" id="fileInput" multiple>
+            <div class="small" id="attachHint">Spreadsheets, images, PDFs or text.</div>
+            <ul id="attachList"></ul>
+            <div class="small warn" id="attachPrivacy">
+              Attachments are sent to Anthropic for the life of this session and deleted when you clear it.
+            </div>
           </div>
 
-          <p id="headline" style="text-align:center;font-style:italic;margin:0 0 12px"></p>
-
-          <table class="data">
-            <thead><tr><th style="width:150px">Dimension</th><th style="width:120px">Score</th><th>Why</th></tr></thead>
-            <tbody id="dimensionRows"></tbody>
-          </table>
-
-          <hr class="fancy">
-
-          <table class="data">
-            <tbody>
-              <tr><th style="width:150px">Target customer</th><td id="targetCustomer"></td></tr>
-              <tr><th>Riskiest assumption</th><td id="riskiestAssumption"></td></tr>
-              <tr><th>Cheapest first test</th><td id="firstExperiment"></td></tr>
-              <tr><th>Comparables</th><td id="comparables"></td></tr>
-            </tbody>
-          </table>
-
-          <hr class="fancy">
-
-          <table class="data">
-            <thead><tr><th style="width:200px">Risk</th><th style="width:80px">Severity</th><th>Mitigation</th></tr></thead>
-            <tbody id="riskRows"></tbody>
-          </table>
-
-          <div id="statusbar">
-            <span id="runStats">&nbsp;</span>
+          <div class="row">
+            <div><button id="startBtn" type="button">&raquo; START &laquo;</button></div>
+            <div><button id="reviseBtn" type="button" class="hidden">Save idea edit</button></div>
+            <div><button id="sampleBtn" type="button">Load Example</button></div>
+            <div><button id="clearBtn" type="button">Clear session</button></div>
           </div>
         </fieldset>
-      </div>
-      <fieldset id="chatBox" class="hidden">
-        <legend>Step 3 &raquo; Ask The Analyst <span class="new">NEW!</span></legend>
-        <div id="transcript"></div>
-        <div class="row">
-          <div><input type="text" id="chatInput" placeholder="Ask a follow-up about your idea..."></div>
-          <div style="flex:0 0 auto"><button id="sendBtn" type="button">Send</button></div>
+
+        <div class="badges">
+          <span class="badge b-award">&#9733; BEST OF THE WEB 1999 &#9733;</span>
+          <span class="badge b-netscape">Netscape Now!</span>
+          <span class="badge b-notepad">Made with Notepad</span>
+          <span class="badge b-css">Valid HTML 4.01</span>
         </div>
-        <div class="small" style="margin-top:4px">The analyst remembers the report above and this conversation.</div>
-      </fieldset>
-      <div class="badges">
-        <span class="badge b-award">&#9733; BEST OF THE WEB 1999 &#9733;</span>
-        <span class="badge b-netscape">Netscape Now!</span>
-        <span class="badge b-notepad">Made with Notepad</span>
-        <span class="badge b-css">Valid HTML 4.01</span>
       </div>
 
-      <div class="webring">
-        <b>THE STARTUP WEBRING</b><br>
-        <a href="#">&laquo; PREV</a> &middot; <a href="#">RANDOM</a> &middot;
-        <a href="#">NEXT &raquo;</a> &middot; <a href="#">LIST SITES</a>
+      <!-- ------------------------ conversation pane ------------------------ -->
+      <div id="chatPane">
+        <fieldset id="chatBox">
+          <legend>The Conversation <span class="new">LIVE!</span></legend>
+
+          <div id="transcript">
+            <div class="msg bot" id="greeting">
+              <div class="who">EVALUATOR</div>
+              <div class="body">Describe your idea on the left and press START. I ask questions first. You get no verdict until you answer them.</div>
+            </div>
+          </div>
+
+          <div id="waiting" class="waiting hidden">
+            <span class="blink">&#9654;&#9654;&#9654;</span> <span id="waitingText">Thinking&hellip;</span>
+            <span id="elapsed">0.0s</span>
+          </div>
+
+          <div id="errorBox" class="hidden">
+            <div class="errline" id="errorText"></div>
+            <button id="retryBtn" type="button">Retry</button>
+          </div>
+
+          <div id="composer">
+            <textarea id="answer" rows="3" placeholder="Answer the questions here. Several short messages are fine."></textarea>
+            <div class="row">
+              <div><button id="sendBtn" type="button" disabled>Send</button></div>
+              <div><button id="verdictBtn" type="button" disabled>Give me the verdict</button></div>
+              <div><button id="copyBtn" type="button" class="hidden">Copy report</button></div>
+            </div>
+          </div>
+
+          <div id="statusbar"><span id="runStats">&nbsp;</span></div>
+        </fieldset>
       </div>
 
-      <fieldset>
-        <legend>About This Site</legend>
-        <p style="font-size:14px;margin:0">
-          Every verdict on this page is produced by a single versioned prompt sent to the Claude API,
-          which returns a schema-validated JSON report. That prompt is not trusted on vibes: it is
-          scored by an offline eval suite of graded test cases &mdash; code graders plus an
-          LLM-as-judge &mdash; that runs in CI on every commit and publishes a scoreboard.
-        </p>
-        <p class="small" style="margin:8px 0 0">
-          Run <code>bie evals run</code> locally to reproduce the scoreboard.
-        </p>
-      </fieldset>
+    </div>
+
+    <div class="webring">
+      <b>THE STARTUP WEBRING</b><br>
+      <a href="#">&laquo; PREV</a> &middot; <a href="#">RANDOM</a> &middot;
+      <a href="#">NEXT &raquo;</a> &middot; <a href="#">LIST SITES</a>
+    </div>
+
+    <fieldset>
+      <legend>About This Site</legend>
+      <p style="font-size:14px;margin:0">
+        This page runs one versioned prompt against the Claude API. It asks you the questions whose
+        answers would most change its verdict, researches the market, and returns a
+        schema-validated report: a verdict, the reasons for and against, the riskiest assumption,
+        a two-week no-code validation plan, named competitors and kill criteria. No scores.
+      </p>
+      <p class="small" style="margin:8px 0 0">
+        Every round shows what it cost. Run <code>bie eval run</code> locally to reproduce the
+        prompt's scoreboard.
+      </p>
+    </fieldset>
 
   </div>
 </div>
@@ -136,6 +125,6 @@
   &copy; 2001 Business Idea Evaluator &middot; Best viewed at 800&times;600 &middot; Made on a Pentium II
 </div>
 
-<script src="app.js"></script>
+<script type="module" src="app.js"></script>
 </body>
 </html>

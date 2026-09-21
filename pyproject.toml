@@ -35,6 +35,16 @@ packages = ["src/bie"]
 pythonpath = ["src"]
 asyncio_mode = "auto"
 markers = ["live: hits the real Anthropic API and costs money"]
+# The default run must be free and fast. Live tests are opt-in: pytest -m live
+addopts = "-m 'not live'"
 
 [tool.ruff]
 line-length = 100
+# Vendored Spec Kit tooling: not ours to lint.
+extend-exclude = [".specify"]
+
+[tool.ruff.lint.per-file-ignores]
+# Typer declares options as call expressions in argument defaults by design.
+"src/bie/cli.py" = ["B008"]
+# FastAPI declares File/Form/Depends the same way.
+"src/bie/api.py" = ["B008"]

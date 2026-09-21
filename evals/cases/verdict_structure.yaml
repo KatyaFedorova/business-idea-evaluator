@@ -1,0 +1,18 @@
+name: verdict has every section and leads with the verdict
+phase: verdict
+idea: >-
+  A subscription iOS app that plays a recording of your own voice shaming you when you
+  doomscroll past your daily limit. $4.99 a month.
+answers: >-
+  1. People aged 20-35 who have already paid for and abandoned Opal or one sec.
+  2. Today they delete the app and reinstall it a week later.
+  3. Nobody has paid me anything yet. 4. I built the Screen Time integration already and
+  I have 4,000 followers who complain about this. 5. Ten hours a week and $3,000.
+  6. TikTok, where the complaint already lives. 7. If fewer than 10 of 50 people pre-pay
+  $5 within two weeks, I am wrong.
+graders:
+  - report_structure
+  - within_word_limit
+  - guesses_are_labelled
+  - names_prior_art
+  - sources_are_real

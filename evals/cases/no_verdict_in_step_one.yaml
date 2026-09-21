@@ -1,0 +1,9 @@
+name: no verdict in step one
+phase: questions
+idea: >-
+  A subscription iOS app that plays a recording of your own voice shaming you when you
+  doomscroll past your daily limit. $4.99 a month, aimed at people who already abandoned
+  three screen-time blockers.
+graders:
+  - no_verdict_in_questions
+  - covers_priority_topics

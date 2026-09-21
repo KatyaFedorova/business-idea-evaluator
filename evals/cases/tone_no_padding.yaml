@@ -1,0 +1,13 @@
+name: no pep talk, no padding
+phase: verdict
+idea: >-
+  A marketplace connecting dog owners with retired vets for home visits. $30 a visit,
+  we take 20 percent.
+answers: >-
+  1. Owners of elderly dogs in cities. 2. They drive to a clinic and wait.
+  3. Six owners paid for a pilot visit. 4. My mother is a retired vet with a network.
+  5. Full time, $20,000. 6. Local Facebook groups. 7. If fewer than half of the pilot
+  owners book a second visit, I am wrong.
+graders:
+  - no_padding
+  - within_word_limit

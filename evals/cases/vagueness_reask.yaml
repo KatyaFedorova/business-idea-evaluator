@@ -1,0 +1,11 @@
+name: vague answers are sent back, not assumed
+phase: verdict
+idea: >-
+  A subscription app that helps people stop doomscrolling by shaming them with their own
+  voice. Ten dollars a month.
+answers: >-
+  1. Everyone who works in an office. 2. They just try to use willpower I guess.
+  3. Not yet but people say they would. 4. I am really passionate about this.
+  5. Some time. 6. Social media. 7. I would just know.
+graders:
+  - reask_rather_than_verdict

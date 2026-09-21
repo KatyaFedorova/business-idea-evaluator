@@ -55,7 +55,7 @@ on the round, not a separate class, so the re-ask path reuses one validator.
 | `contradictions` | list[str] | may be empty; FR-011 |
 | `prior_art` | list[str] | named existing products when the idea is a worse version; FR-010 |
 | `missing_data` | list[str] | data neither party has, and how to get it; FR-010 |
-| `word_count` | int | computed, validated ≤ 750 as a hard stop around the ~600-word target |
+| `word_count` | int | computed property, not a model-filled field; validated ≤ 900 as a runaway stop. The ~600-word target is enforced by the prompt and by the eval suite at 700. |
 
 ### FailureMode **(model output)**
 `rank` (1–3), `text` (non-empty), `is_guess` (bool — Principle/FR-009 labelling).
