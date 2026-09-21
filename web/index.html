@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>:: BUSINESS IDEA EVALUATOR 2001 :: Powered by Claude ::</title>
+<meta name="viewport" content="width=800">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="page">
+
+  <div id="banner">
+    <h1>Business Idea Evaluator</h1>
+    <div class="sub">~*~ Your Idea. Scored By A Machine. Since 2001 ~*~</div>
+  </div>
+
+  <div class="marquee"><span>
+    *** WELCOME TO THE BUSINESS IDEA EVALUATOR *** TYPE YOUR IDEA BELOW AND THE MACHINE WILL SCORE IT ON 5 DIMENSIONS ***
+    NOW WITH LIVE CHAT *** NO FLOPPY DISK REQUIRED *** SIGN THE GUESTBOOK ***
+  </span></div>
+
+  <table id="layout"><tbody><tr>
+
+    <td id="sidebar">
+      <div class="navbox">
+        <h3>NAVIGATION</h3>
+        <ul>
+          <li><a href="#evaluator">Evaluate Idea</a></li>
+          <li><a href="#report">The Report</a></li>
+          <li><a href="#chat">Ask The Analyst</a></li>
+          <li><a href="#about">About This Site</a></li>
+        </ul>
+      </div>
+
+      <div class="navbox">
+        <h3>SETTINGS</h3>
+        <label for="model">Brain</label>
+        <select id="model">
+          <option value="claude-opus-5">Claude Opus 5</option>
+          <option value="claude-sonnet-5">Claude Sonnet 5</option>
+          <option value="claude-haiku-4-5">Claude Haiku 4.5</option>
+        </select>
+        <div style="height:6px"></div>
+        <label for="effort">Thinking Effort</label>
+        <select id="effort">
+          <option value="low">low</option>
+          <option value="medium" selected>medium</option>
+          <option value="high">high</option>
+        </select>
+        <div style="height:6px"></div>
+        <label for="promptVersion">Prompt Version</label>
+        <select id="promptVersion">
+          <option value="v1">v1 (baseline)</option>
+          <option value="v2" selected>v2 (rubric)</option>
+        </select>
+      </div>
+
+      <div class="navbox">
+        <h3>VISITORS</h3>
+        <div class="counter" id="hitCounter">00000000</div>
+        <div style="text-align:center;margin-top:4px">You are visitor<br>#<span id="visitorNo">?</span></div>
+      </div>
+
+      <div class="navbox">
+        <h3>THIS SITE IS</h3>
+        <div style="text-align:center">
+          <span class="blink">UNDER CONSTRUCTION</span><br>
+          <span style="font-size:10px">Best viewed at 800&times;600<br>in Netscape Navigator 4</span>
+        </div>
+      </div>
+    </td>
+
+    <td id="main">
+
+      <a name="evaluator"></a>
+      <fieldset>
+        <legend>STEP 1 &raquo; DESCRIBE YOUR BUSINESS IDEA</legend>
+        <label for="idea">What are you building, for whom, and how does it make money?</label>
+        <textarea id="idea" placeholder="e.g. A subscription app that plays a recording of your own voice shaming you when you doomscroll past your daily limit."></textarea>
+        <div class="small" style="margin:4px 0 8px">Tip: 2-4 sentences beats 1 word. The machine scores what you tell it.</div>
+        <div class="row">
+          <div style="flex:0 0 auto">
+            <button id="evaluateBtn" type="button">&raquo; EVALUATE MY IDEA &laquo;</button>
+          </div>
+          <div style="flex:0 0 auto">
+            <button id="sampleBtn" type="button">Load Example</button>
+          </div>
+          <div style="flex:0 0 auto">
+            <button id="clearBtn" type="button">Clear</button>
+          </div>
+        </div>
+      </fieldset>
+
+      <a name="report"></a>
+      <div id="loading" class="hidden">
+        <fieldset>
+          <legend>PLEASE WAIT</legend>
+          <div style="text-align:center;padding:14px">
+            <span class="blink">&#9632; &#9632; &#9632;</span>
+            <div style="font-family:Verdana,sans-serif;font-size:12px;margin-top:6px">
+              Consulting the machine&hellip; <span id="elapsed">0.0s</span>
+            </div>
+          </div>
+        </fieldset>
+      </div>
+
+      <div id="error" class="hidden">
+        <fieldset style="border-color:#cc0000">
+          <legend style="background:#ffcccc">ERROR</legend>
+          <div id="errorText" style="font-family:Verdana,sans-serif;font-size:12px;color:#cc0000"></div>
+        </fieldset>
+      </div>
+
+      <div id="report" class="hidden">
+        <fieldset>
+          <legend>STEP 2 &raquo; THE VERDICT</legend>
+
+          <div class="verdict" id="verdictBox">
+            <span id="verdictText">&mdash;</span><br>
+            <span style="font-size:14px;font-family:Verdana,sans-serif">Overall score: <b id="overallScore">0</b>/100</span>
+          </div>
+
+          <p id="headline" style="text-align:center;font-style:italic;margin:0 0 12px"></p>
+
+          <table class="data">
+            <thead><tr><th style="width:150px">Dimension</th><th style="width:120px">Score</th><th>Why</th></tr></thead>
+            <tbody id="dimensionRows"></tbody>
+          </table>
+
+          <hr class="fancy">
+
+          <table class="data">
+            <tbody>
+              <tr><th style="width:150px">Target customer</th><td id="targetCustomer"></td></tr>
+              <tr><th>Riskiest assumption</th><td id="riskiestAssumption"></td></tr>
+              <tr><th>Cheapest first test</th><td id="firstExperiment"></td></tr>
+              <tr><th>Comparables</th><td id="comparables"></td></tr>
+            </tbody>
+          </table>
+
+          <hr class="fancy">
+
+          <table class="data">
+            <thead><tr><th style="width:200px">Risk</th><th style="width:80px">Severity</th><th>Mitigation</th></tr></thead>
+            <tbody id="riskRows"></tbody>
+          </table>
+
+          <div id="statusbar">
+            <span id="runStats">&nbsp;</span>
+          </div>
+        </fieldset>
+      </div>
+
+      <a name="chat"></a>
+      <fieldset id="chatBox" class="hidden">
+        <legend>STEP 3 &raquo; ASK THE ANALYST</legend>
+        <div id="transcript"></div>
+        <div class="row">
+          <div><input type="text" id="chatInput" placeholder="Ask a follow-up about your idea..."></div>
+          <div style="flex:0 0 auto"><button id="sendBtn" type="button">SEND</button></div>
+        </div>
+        <div class="small" style="margin-top:4px">The analyst remembers the report above and this conversation.</div>
+      </fieldset>
+
+      <a name="about"></a>
+      <fieldset>
+        <legend>ABOUT THIS SITE</legend>
+        <p style="font-size:14px;margin:0">
+          Every verdict on this page is produced by a single versioned prompt sent to the Claude API,
+          which returns a schema-validated JSON report. That prompt is not trusted on vibes: it is
+          scored by an offline eval suite of graded test cases &mdash; code graders plus an
+          LLM-as-judge &mdash; that runs in CI on every commit and publishes a scoreboard.
+        </p>
+        <p class="small" style="margin:8px 0 0">
+          Run <code>bie evals run</code> locally to reproduce the scoreboard.
+        </p>
+      </fieldset>
+
+    </td>
+  </tr></tbody></table>
+</div>
+
+<div id="footer">
+  &copy; 2001 Business Idea Evaluator &middot; Made with <span style="color:#ff69b4">&hearts;</span> and HTML tables &middot;
+  <a href="#evaluator">back to top</a>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
