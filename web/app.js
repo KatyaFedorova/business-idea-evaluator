@@ -13,19 +13,6 @@ const SAMPLE =
   "your own voice shaming you until you close the app. $4.99/month, aimed at 20-35 year olds " +
   "who have already tried and abandoned three screen-time blockers.";
 
-/* ---------- visitor counter: the whole point of a 2001 website ---------- */
-function initCounter() {
-  let n = 0;
-  try {
-    n = parseInt(localStorage.getItem("bie_hits") || "1337", 10) + 1;
-    localStorage.setItem("bie_hits", String(n));
-  } catch (_) {
-    n = 1337; // private window; the counter was always a lie anyway
-  }
-  $("hitCounter").textContent = String(n).padStart(8, "0");
-  $("visitorNo").textContent = String(n);
-}
-
 /* ---------- rendering ---------- */
 function show(id, visible) {
   $(id).classList.toggle("hidden", !visible);
@@ -135,12 +122,7 @@ async function postEvaluate(idea) {
   const res = await fetch("/api/evaluate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      idea,
-      model: $("model").value,
-      effort: $("effort").value,
-      prompt_version: $("promptVersion").value,
-    }),
+    body: JSON.stringify({ idea }),
   });
   if (!res.ok) {
     const detail = await res.text();
@@ -176,7 +158,6 @@ async function send() {
           idea: state.idea,
           evaluation: state.evaluation,
           messages: state.history,
-          model: $("model").value,
         }),
       });
       if (!res.ok) throw new Error(`Server said ${res.status}`);
@@ -225,7 +206,7 @@ async function demoResult(idea) {
   await new Promise((r) => setTimeout(r, 900));
   return {
     idea,
-    prompt_version: $("promptVersion").value,
+    prompt_version: "demo",
     evaluation: {
       headline: "Sharp hook, thin moat, and the platform owns your distribution.",
       verdict: "refine",
@@ -252,7 +233,6 @@ async function demoResult(idea) {
 }
 
 /* ---------- wiring ---------- */
-initCounter();
 $("evaluateBtn").addEventListener("click", evaluate);
 $("sampleBtn").addEventListener("click", () => { $("idea").value = SAMPLE; });
 $("clearBtn").addEventListener("click", () => {
@@ -270,3 +250,22 @@ if (DEMO && new URLSearchParams(location.search).has("auto")) {
   $("idea").value = SAMPLE;
   evaluate();
 }
+
+/* Sparkle cursor trail. Peak 1999, and the one effect the page would be poorer without. */
+(function sparkleTrail() {
+  const COLORS = ["#ff3399", "#ffee00", "#00ccff", "#33cc33", "#9933ff"];
+  let last = 0;
+  document.addEventListener("mousemove", (e) => {
+    const now = Date.now();
+    if (now - last < 45) return; // don't carpet the page
+    last = now;
+    const s = document.createElement("span");
+    s.className = "sparkle";
+    s.textContent = "✦";
+    s.style.left = e.pageX + "px";
+    s.style.top = e.pageY + "px";
+    s.style.color = COLORS[Math.floor(Math.random() * COLORS.length)];
+    document.body.appendChild(s);
+    setTimeout(() => s.remove(), 700);
+  });
+})();

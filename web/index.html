@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>:: BUSINESS IDEA EVALUATOR 2001 :: Powered by Claude ::</title>
+<title>:: Business Idea Evaluator ::</title>
 <meta name="viewport" content="width=800">
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -16,66 +16,16 @@
   </div>
 
   <div class="marquee"><span>
-    *** WELCOME TO THE BUSINESS IDEA EVALUATOR *** TYPE YOUR IDEA BELOW AND THE MACHINE WILL SCORE IT ON 5 DIMENSIONS ***
-    NOW WITH LIVE CHAT *** NO FLOPPY DISK REQUIRED *** SIGN THE GUESTBOOK ***
+    &#9733; HIRE ME &#9733; I build LLM-powered products &mdash; I can do this for your business &#9733;
+    <a href="https://www.linkedin.com/in/kat-fedorova/" target="_blank" rel="noopener">linkedin.com/in/kat-fedorova</a> &#9733;
+    <a href="mailto:fedorovakatya1984@gmail.com">fedorovakatya1984@gmail.com</a> &#9733;
+    <a href="https://YOUR-WEBSITE.com" target="_blank" rel="noopener">YOUR-WEBSITE.com</a> &#9733;
+    AVAILABLE FOR WORK &#9733;
   </span></div>
 
-  <table id="layout"><tbody><tr>
-
-    <td id="sidebar">
-      <div class="navbox">
-        <h3>NAVIGATION</h3>
-        <ul>
-          <li><a href="#evaluator">Evaluate Idea</a></li>
-          <li><a href="#report">The Report</a></li>
-          <li><a href="#chat">Ask The Analyst</a></li>
-          <li><a href="#about">About This Site</a></li>
-        </ul>
-      </div>
-
-      <div class="navbox">
-        <h3>SETTINGS</h3>
-        <label for="model">Brain</label>
-        <select id="model">
-          <option value="claude-opus-5">Claude Opus 5</option>
-          <option value="claude-sonnet-5">Claude Sonnet 5</option>
-          <option value="claude-haiku-4-5">Claude Haiku 4.5</option>
-        </select>
-        <div style="height:6px"></div>
-        <label for="effort">Thinking Effort</label>
-        <select id="effort">
-          <option value="low">low</option>
-          <option value="medium" selected>medium</option>
-          <option value="high">high</option>
-        </select>
-        <div style="height:6px"></div>
-        <label for="promptVersion">Prompt Version</label>
-        <select id="promptVersion">
-          <option value="v1">v1 (baseline)</option>
-          <option value="v2" selected>v2 (rubric)</option>
-        </select>
-      </div>
-
-      <div class="navbox">
-        <h3>VISITORS</h3>
-        <div class="counter" id="hitCounter">00000000</div>
-        <div style="text-align:center;margin-top:4px">You are visitor<br>#<span id="visitorNo">?</span></div>
-      </div>
-
-      <div class="navbox">
-        <h3>THIS SITE IS</h3>
-        <div style="text-align:center">
-          <span class="blink">UNDER CONSTRUCTION</span><br>
-          <span style="font-size:10px">Best viewed at 800&times;600<br>in Netscape Navigator 4</span>
-        </div>
-      </div>
-    </td>
-
-    <td id="main">
-
-      <a name="evaluator"></a>
+  <div id="main">
       <fieldset>
-        <legend>STEP 1 &raquo; DESCRIBE YOUR BUSINESS IDEA</legend>
+        <legend>Step 1 &raquo; Describe Your Business Idea <span class="hot">HOT!</span></legend>
         <label for="idea">What are you building, for whom, and how does it make money?</label>
         <textarea id="idea" placeholder="e.g. A subscription app that plays a recording of your own voice shaming you when you doomscroll past your daily limit."></textarea>
         <div class="small" style="margin:4px 0 8px">Tip: 2-4 sentences beats 1 word. The machine scores what you tell it.</div>
@@ -91,30 +41,23 @@
           </div>
         </div>
       </fieldset>
-
-      <a name="report"></a>
       <div id="loading" class="hidden">
         <fieldset>
-          <legend>PLEASE WAIT</legend>
-          <div style="text-align:center;padding:14px">
-            <span class="blink">&#9632; &#9632; &#9632;</span>
-            <div style="font-family:Verdana,sans-serif;font-size:12px;margin-top:6px">
-              Consulting the machine&hellip; <span id="elapsed">0.0s</span>
-            </div>
-          </div>
+          <legend>Please wait</legend>
+          <div class="waiting"><span class="blink">&#9654;&#9654;&#9654;</span> Consulting the machine&hellip; <span id="elapsed">0.0s</span></div>
         </fieldset>
       </div>
 
       <div id="error" class="hidden">
         <fieldset style="border-color:#cc0000">
-          <legend style="background:#ffcccc">ERROR</legend>
+          <legend style="background:#ffcccc">Error</legend>
           <div id="errorText" style="font-family:Verdana,sans-serif;font-size:12px;color:#cc0000"></div>
         </fieldset>
       </div>
 
       <div id="report" class="hidden">
         <fieldset>
-          <legend>STEP 2 &raquo; THE VERDICT</legend>
+          <legend>Step 2 &raquo; The Verdict</legend>
 
           <div class="verdict" id="verdictBox">
             <span id="verdictText">&mdash;</span><br>
@@ -151,21 +94,30 @@
           </div>
         </fieldset>
       </div>
-
-      <a name="chat"></a>
       <fieldset id="chatBox" class="hidden">
-        <legend>STEP 3 &raquo; ASK THE ANALYST</legend>
+        <legend>Step 3 &raquo; Ask The Analyst <span class="new">NEW!</span></legend>
         <div id="transcript"></div>
         <div class="row">
           <div><input type="text" id="chatInput" placeholder="Ask a follow-up about your idea..."></div>
-          <div style="flex:0 0 auto"><button id="sendBtn" type="button">SEND</button></div>
+          <div style="flex:0 0 auto"><button id="sendBtn" type="button">Send</button></div>
         </div>
         <div class="small" style="margin-top:4px">The analyst remembers the report above and this conversation.</div>
       </fieldset>
+      <div class="badges">
+        <span class="badge b-award">&#9733; BEST OF THE WEB 1999 &#9733;</span>
+        <span class="badge b-netscape">Netscape Now!</span>
+        <span class="badge b-notepad">Made with Notepad</span>
+        <span class="badge b-css">Valid HTML 4.01</span>
+      </div>
 
-      <a name="about"></a>
+      <div class="webring">
+        <b>THE STARTUP WEBRING</b><br>
+        <a href="#">&laquo; PREV</a> &middot; <a href="#">RANDOM</a> &middot;
+        <a href="#">NEXT &raquo;</a> &middot; <a href="#">LIST SITES</a>
+      </div>
+
       <fieldset>
-        <legend>ABOUT THIS SITE</legend>
+        <legend>About This Site</legend>
         <p style="font-size:14px;margin:0">
           Every verdict on this page is produced by a single versioned prompt sent to the Claude API,
           which returns a schema-validated JSON report. That prompt is not trusted on vibes: it is
@@ -177,13 +129,11 @@
         </p>
       </fieldset>
 
-    </td>
-  </tr></tbody></table>
+  </div>
 </div>
 
 <div id="footer">
-  &copy; 2001 Business Idea Evaluator &middot; Made with <span style="color:#ff69b4">&hearts;</span> and HTML tables &middot;
-  <a href="#evaluator">back to top</a>
+  &copy; 2001 Business Idea Evaluator &middot; Best viewed at 800&times;600 &middot; Made on a Pentium II
 </div>
 
 <script src="app.js"></script>
