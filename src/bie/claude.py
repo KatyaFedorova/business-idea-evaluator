@@ -18,6 +18,8 @@ from typing import Any, TypeVar
 import anthropic
 from pydantic import BaseModel, ValidationError
 
+from bie import fixtures
+from bie.budget import record_spend
 from bie.config import Settings
 from bie.errors import BieError, InvalidModelOutput, RateLimited, UpstreamError, UpstreamTimeout
 from bie.pricing import cost_usd
@@ -183,6 +185,12 @@ def complete(
         kwargs["tools"] = research_tools(settings)
 
     started = time.monotonic()
+    replay = fixtures.replay_path()
+    if replay is not None:
+        # No call, no charge: the reply comes off disk exactly as it arrived.
+        message: Any = fixtures.load(replay)
+        return _finish(message, schema, research, started, recorded=False)
+
     try:
         with client.messages.stream(**kwargs) as stream:
             message = stream.get_final_message()
@@ -199,10 +207,30 @@ def complete(
     except Exception as exc:  # SDK and transport failures alike
         raise translate_error(exc) from exc
 
+    if fixtures.recording_enabled():
+        fixtures.record(message, label="reply")
+    return _finish(message, schema, research, started)
+
+
+def _finish(
+    message: Any, schema: type[T], research: bool, started: float, *, recorded: bool = True
+) -> ModelReply:
+    """Account for the call before validating it.
+
+    The call is billed the moment it returns, whether or not the reply is usable. Costing
+    it only on success let expensive failures escape the session and daily ledgers, and
+    made the spend reported to the founder smaller than the spend on the bill.
+    """
     sources, status, found = _read_research(message)
-    parsed = _parse(message, schema)
     usage = _usage(message, found)
     usage.latency_ms = int((time.monotonic() - started) * 1000)
+    if recorded:
+        record_spend(usage.cost_usd)
+    try:
+        parsed = _parse(message, schema)
+    except InvalidModelOutput as exc:
+        exc.usage = usage  # the caller can still report what the failure cost
+        raise
     return ModelReply(
         parsed=parsed,
         usage=usage,

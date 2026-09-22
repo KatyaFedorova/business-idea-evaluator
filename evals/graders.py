@@ -63,7 +63,7 @@ def report_structure(round_: Round) -> GradeResult:
     return _ok("report_structure", not problems, "; ".join(problems))
 
 
-def within_word_limit(round_: Round, limit: int = 700) -> GradeResult:
+def within_word_limit(round_: Round, limit: int = 320) -> GradeResult:
     count = round_.report.word_count if round_.report else 0
     return _ok("within_word_limit", count <= limit, f"{count} words")
 

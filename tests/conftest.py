@@ -111,6 +111,16 @@ class FakeAnthropic:
         self.messages = FakeMessages(message)
 
 
+@pytest.fixture(autouse=True)
+def isolated_ledger(tmp_path, monkeypatch):
+    """No test may touch the real spend ledger in ~/.bie/spend.json."""
+    from bie import budget
+
+    monkeypatch.setenv("BIE_LEDGER_PATH", str(tmp_path / "spend.json"))
+    monkeypatch.setattr(budget, "daily_spend", budget.DailySpend(path=tmp_path / "spend.json"))
+    return budget.daily_spend
+
+
 @pytest.fixture
 def fake_anthropic():
     """Factory: build a fake client whose single call returns `text` (and blocks)."""

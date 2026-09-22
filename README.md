@@ -49,6 +49,17 @@ commit, not as a merge gate. Run it only when a change could alter model behavio
 prompt, the schemas, the evaluator, the model or effort settings, or the graders — and only
 when the owner has asked for that run. See Principle III in `.specify/memory/constitution.md`.
 
+## Debugging a failure without paying for it twice
+
+```bash
+BIE_RECORD=1 bie ask "..."            # writes the reply to tests/fixtures/
+BIE_REPLAY=tests/fixtures/reply-*.json bie ask "..."   # no API call at all
+```
+
+Every call is charged to the day's ledger the moment it returns, including calls whose reply
+fails validation — those are billed by Anthropic too, and pretending otherwise understated
+the spend. The ledger lives in `~/.bie/spend.json` so it survives between runs.
+
 ## Develop
 
 ```bash

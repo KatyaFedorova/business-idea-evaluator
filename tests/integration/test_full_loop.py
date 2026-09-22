@@ -50,6 +50,6 @@ def test_idea_to_questions_to_verdict():
             "PROCEED_ONLY_AFTER_TESTING",
             "DONT_PROCEED",
         )
-        assert second.report.word_count <= 900
+        assert second.report.word_count <= 400
         assert second.report.validation_plan.requires_code is False
     assert second.cost_usd > 0

@@ -189,8 +189,9 @@ verdict refers to specific content from those files.
   (low/medium/high) with what would move it; three strongest reasons it works; three most
   likely reasons it fails, ranked by how likely they are to kill it; the single riskiest
   assumption; a validation plan testing that assumption in under two weeks with no code,
-  giving exact steps, who to talk to, and what counts as a pass versus a fail; specific
-  research questions with named competitors and what to check about them; and kill criteria.
+  giving at most four steps, who to talk to, and a numeric pass and fail threshold; at most
+  three research questions with named competitors and what to check about them; and at most
+  three kill criteria.
 - **FR-009**: The verdict report MUST separate what the evaluator knows from what it is
   guessing, with guesses explicitly labelled.
 - **FR-010**: The verdict report MUST name the existing product when the idea is a worse
@@ -198,8 +199,10 @@ verdict refers to specific content from those files.
   it when it would need data neither party has.
 - **FR-011**: The verdict report MUST point at contradictions between the founder's own
   answers rather than resolving them silently.
-- **FR-012**: The verdict report MUST lead with the problem and contain no encouragement
-  padding, and MUST stay at approximately 600 words or fewer, favouring bullets over prose.
+- **FR-012**: The verdict report MUST lead with the problem, contain no encouragement
+  padding, and read as bullets rather than prose: one line per reason, per step and per
+  criterion, under 300 words in total. Field-level length limits MUST be enforced by the
+  schema so a long reply is impossible rather than merely discouraged.
 - **FR-013**: The evaluation MUST perform live research at evaluation time and ground its
   market claims in sources retrieved during the round, not in recalled consensus. Named
   competitors and cited evidence MUST come from those sources.
@@ -293,7 +296,7 @@ verdict refers to specific content from those files.
 - **SC-004**: No visitor is ever shown a partial, invented, or section-missing report —
   zero occurrences across the acceptance and eval suites.
 - **SC-005**: 100% of verdict reports open with one of the three permitted verdict lines
-  and stay within approximately 600 words.
+  and stay under 300 words.
 - **SC-006**: Deliberately vague answers trigger a re-ask rather than a verdict in at least
   90% of eval cases built for that purpose.
 - **SC-007**: A founder can add detail and obtain an updated verdict in under 30 seconds of

@@ -12,8 +12,8 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from bie import budget
 from bie.attachments import delete_files, prepare_uploads
-from bie.budget import daily_spend
 from bie.claude import build_client
 from bie.config import ALLOWED_MEDIA_TYPES, Settings
 from bie.errors import BieError
@@ -84,7 +84,7 @@ def create_app(
             "max_cost_per_round_usd": current.max_cost_per_round_usd,
             "max_cost_per_session_usd": current.max_cost_per_session_usd,
             "max_cost_per_day_usd": current.max_cost_per_day_usd,
-            "spent_today_usd": round(daily_spend.spent, 4),
+            "spent_today_usd": round(budget.daily_spend.spent, 4),
             "max_reasks": current.max_reasks,
         }
 

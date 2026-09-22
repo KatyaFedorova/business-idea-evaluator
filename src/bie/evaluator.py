@@ -12,13 +12,7 @@ from typing import Any
 
 from bie import prompts
 from bie.attachments import content_blocks
-from bie.budget import (
-    check_daily,
-    check_round,
-    check_session,
-    project_round_cost,
-    record_spend,
-)
+from bie.budget import check_daily, check_round, check_session, project_round_cost
 from bie.claude import build_client, complete, research_tools
 from bie.config import Settings
 from bie.errors import IdeaTooShort
@@ -41,9 +35,10 @@ STEP_TWO = (
     "would rest on your assumption rather than their fact, set decision to reask, say in the "
     "note exactly what was vague, and ask again. Otherwise set decision to verdict: lead with "
     "the verdict, label every guess, name real competitors you actually found, point at any "
-    "contradiction between the founder's own answers. HARD LIMIT: the whole report must be "
-    "under 600 words. Each reason is one sentence of at most 25 words, each validation step "
-    "at most 20 words, each research direction at most 25 words. Cut rather than run long."
+    "contradiction between the founder's own answers. LENGTH: the whole report must read as "
+    "bullets and stay under 300 words. One line per reason, per step, per criterion — no "
+    "sentence over 20 words, no preamble, no restating the idea back. Cut rather than run "
+    "long; the schema will reject anything that does not fit."
 )
 NO_RESEARCH_NOTE = (
     " Research is switched off for this run, so you have no sources: mark every market "
@@ -173,7 +168,6 @@ def ask_questions(
         effort=settings.question_effort,
         settings=settings,
     )
-    record_spend(reply.usage.cost_usd)
     return Round(
         index=0,
         kind="questions",
@@ -231,7 +225,6 @@ def evaluate(
         settings=settings,
         research=settings.research_enabled,
     )
-    record_spend(reply.usage.cost_usd)
     decision: RoundDecision = reply.parsed
     is_reask = decision.decision == "reask"
     return Round(

@@ -45,11 +45,17 @@ class BudgetExceeded(BieError):
 
 
 class InvalidModelOutput(BieError):
-    """The reply did not validate. Never patch it, never show it."""
+    """The reply did not validate. Never patch it, never show it.
+
+    Carries `usage` when one is known: the call was billed even though its reply was
+    useless, and pretending otherwise understates the spend.
+    """
 
     code = "invalid_model_output"
     status_code = 500
     retryable = True
+
+    usage: object | None = None
 
 
 class UpstreamError(BieError):

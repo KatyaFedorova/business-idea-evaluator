@@ -71,9 +71,8 @@ def test_the_page_is_served_at_the_root(client):
     assert "Business Idea Evaluator" in response.text
 
 
-def test_limits_reports_the_daily_budget_and_what_is_left(client):
-    from bie.budget import daily_spend
-
+def test_limits_reports_the_daily_budget_and_what_is_left(client, isolated_ledger):
+    daily_spend = isolated_ledger
     daily_spend.reset()
     body = client.get("/api/limits").json()
     assert body["max_cost_per_day_usd"] == Settings().max_cost_per_day_usd
@@ -84,12 +83,13 @@ def test_limits_reports_the_daily_budget_and_what_is_left(client):
     daily_spend.reset()
 
 
-def test_a_round_is_refused_once_the_day_is_spent(fake_anthropic, valid_question_set):
+def test_a_round_is_refused_once_the_day_is_spent(
+    fake_anthropic, valid_question_set, isolated_ledger
+):
     """Regression guard for a public URL: the session cap does not bound the day."""
     import json
 
-    from bie.budget import daily_spend
-
+    daily_spend = isolated_ledger
     daily_spend.reset()
     daily_spend.add(1.99)
     fake = fake_anthropic(json.dumps(valid_question_set))
