@@ -108,3 +108,53 @@ def test_a_message_that_is_only_files_still_counts_as_something(fake_anthropic):
         [{"role": "user", "content": [{"type": "image", "source": {"type": "file", "file_id": "f"}}]}]
     )
     assert cleaned[0]["content"] == [{"type": "text", "text": "(attachment)"}]
+
+
+# --- the daily ceiling ----------------------------------------------------- #
+def test_the_daily_ledger_accumulates_and_refuses():
+    """A per-session cap does nothing about a hundred sessions."""
+    from bie.budget import DailySpend, check_daily, record_spend
+
+    ledger = DailySpend()
+    settings = Settings()
+    check_daily(1.0, settings, ledger)  # nothing spent yet
+
+    for _ in range(10):
+        record_spend(0.45, ledger)
+    assert ledger.spent == pytest.approx(4.5)
+
+    check_daily(0.4, settings, ledger)  # 4.9 total, still under $5
+    with pytest.raises(BudgetExceeded) as exc:
+        check_daily(0.7, settings, ledger)
+    assert "5.00" in str(exc.value)
+    assert "tomorrow" in str(exc.value)
+
+
+def test_the_daily_ledger_rolls_over_at_midnight_utc(monkeypatch):
+    from datetime import UTC, datetime, timedelta
+
+    from bie import budget
+
+    ledger = budget.DailySpend()
+    ledger.add(4.99)
+    assert ledger.spent == pytest.approx(4.99)
+
+    tomorrow = datetime.now(UTC) + timedelta(days=1)
+
+    class FakeDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return tomorrow
+
+    monkeypatch.setattr(budget, "datetime", FakeDatetime)
+    assert ledger.spent == 0.0
+
+
+def test_the_daily_ceiling_is_configurable(monkeypatch):
+    from bie.budget import DailySpend, check_daily
+
+    monkeypatch.setenv("BIE_MAX_COST_PER_DAY_USD", "0.50")
+    ledger = DailySpend()
+    ledger.add(0.45)
+    with pytest.raises(BudgetExceeded):
+        check_daily(0.10, Settings(), ledger)

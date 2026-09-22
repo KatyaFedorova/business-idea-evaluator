@@ -1,0 +1,10 @@
+# Vercel installs from this file. Keep in step with [project.dependencies] in pyproject.toml.
+anthropic>=1.6.0
+fastapi>=0.115
+pydantic>=2.7
+python-dotenv>=1.0
+pyyaml>=6.0
+typer>=0.12
+rich>=13.7
+openpyxl>=3.1
+python-multipart>=0.0.9

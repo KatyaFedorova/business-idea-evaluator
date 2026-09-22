@@ -6,6 +6,8 @@ not reconciled after it.
 
 from __future__ import annotations
 
+import threading
+from datetime import UTC, date, datetime
 from typing import Any
 
 from bie.config import Settings
@@ -14,10 +16,14 @@ from bie.pricing import WEB_SEARCH_COST_PER_SEARCH_USD, cost_usd
 
 __all__ = [
     "BudgetExceeded",
+    "DailySpend",
+    "check_daily",
     "check_round",
     "check_session",
     "countable",
+    "daily_spend",
     "project_round_cost",
+    "record_spend",
 ]
 
 # The token-counting endpoint refuses file sources ("File sources are not supported in
@@ -93,3 +99,65 @@ def check_session(*, spent: float, projected: float, settings: Settings) -> None
 
 def search_cost(searches: int) -> float:
     return searches * WEB_SEARCH_COST_PER_SEARCH_USD
+
+
+class DailySpend:
+    """Today's spend, shared by every request this process serves.
+
+    A per-session ceiling stops one founder running away with your money. It does
+    nothing about a hundred founders, which is the shape of the risk the moment the
+    URL is public. This is the day-level stop.
+
+    Deliberately in-process: the constitution fixes a stack with no database, and a
+    counter in memory is honest about what it is. It resets when the process restarts
+    and it is per instance, so it is a brake, not a guarantee. The guarantee belongs
+    in the Anthropic Console as a monthly budget on the key.
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._day: date = datetime.now(UTC).date()
+        self._spent: float = 0.0
+
+    def _roll(self) -> None:
+        today = datetime.now(UTC).date()
+        if today != self._day:
+            self._day = today
+            self._spent = 0.0
+
+    @property
+    def spent(self) -> float:
+        with self._lock:
+            self._roll()
+            return self._spent
+
+    def add(self, amount: float) -> float:
+        with self._lock:
+            self._roll()
+            self._spent += max(0.0, amount)
+            return self._spent
+
+    def reset(self) -> None:
+        with self._lock:
+            self._day = datetime.now(UTC).date()
+            self._spent = 0.0
+
+
+daily_spend = DailySpend()
+
+
+def check_daily(projected: float, settings: Settings, ledger: DailySpend | None = None) -> None:
+    """Refuse a round that would take today's total past the daily ceiling."""
+    ledger = ledger or daily_spend
+    spent = ledger.spent
+    if spent + projected > settings.max_cost_per_day_usd:
+        raise BudgetExceeded(
+            f"This site has spent its daily budget of "
+            f"${settings.max_cost_per_day_usd:.2f} on evaluations. Come back tomorrow.",
+            detail=f"spent_today={spent} projected={projected}",
+        )
+
+
+def record_spend(amount: float, ledger: DailySpend | None = None) -> float:
+    """Called after a round returns, with what it actually cost."""
+    return (ledger or daily_spend).add(amount)

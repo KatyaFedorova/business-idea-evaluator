@@ -67,6 +67,9 @@ class Settings:
     max_cost_per_session_usd: float = field(
         default_factory=lambda: _float("BIE_MAX_COST_PER_SESSION_USD", 5.00)
     )
+    max_cost_per_day_usd: float = field(
+        default_factory=lambda: _float("BIE_MAX_COST_PER_DAY_USD", 5.00)
+    )
     max_reasks: int = field(default_factory=lambda: _int("BIE_MAX_REASKS", 3))
 
     # The eval suite runs the whole flow several times over, so it gets its own,
@@ -94,6 +97,7 @@ class Settings:
             ("BIE_EVAL_MAX_SEARCHES", self.eval_max_searches),
             ("BIE_MAX_COST_PER_ROUND_USD", self.max_cost_per_round_usd),
             ("BIE_MAX_COST_PER_SESSION_USD", self.max_cost_per_session_usd),
+            ("BIE_MAX_COST_PER_DAY_USD", self.max_cost_per_day_usd),
         ):
             if value <= 0:
                 raise ValueError(f"{name} must be greater than zero, got {value!r}")

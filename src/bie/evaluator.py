@@ -12,7 +12,13 @@ from typing import Any
 
 from bie import prompts
 from bie.attachments import content_blocks
-from bie.budget import check_round, check_session, project_round_cost
+from bie.budget import (
+    check_daily,
+    check_round,
+    check_session,
+    project_round_cost,
+    record_spend,
+)
 from bie.claude import build_client, complete, research_tools
 from bie.config import Settings
 from bie.errors import IdeaTooShort
@@ -152,6 +158,7 @@ def ask_questions(
         client, model=settings.model, system=system, messages=messages, settings=settings
     )
     check_round(projected, settings)
+    check_daily(projected, settings)
 
     reply = complete(
         client,
@@ -162,6 +169,7 @@ def ask_questions(
         effort=settings.question_effort,
         settings=settings,
     )
+    record_spend(reply.usage.cost_usd)
     return Round(
         index=0,
         kind="questions",
@@ -202,6 +210,7 @@ def evaluate(
     )
     check_round(projected, settings)
     check_session(spent=spent, projected=projected, settings=settings)
+    check_daily(projected, settings)
 
     reasks = sum(1 for r in rounds if r.kind == "reask")
     instruction = STEP_TWO + (STEP_TWO_FINAL if reasks >= settings.max_reasks else "")
@@ -216,6 +225,7 @@ def evaluate(
         settings=settings,
         research=True,
     )
+    record_spend(reply.usage.cost_usd)
     decision: RoundDecision = reply.parsed
     is_reask = decision.decision == "reask"
     return Round(

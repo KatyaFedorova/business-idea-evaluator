@@ -37,6 +37,11 @@ bie verdict --session s.json --answers "..."
 bie eval run                    # the graded eval suite (spends money)
 ```
 
+## Deploy
+
+Free on Vercel Hobby — see [DEPLOY.md](DEPLOY.md). Set `BIE_MAX_ATTACHMENT_MB=4` there,
+because Vercel caps request bodies at 4.5 MB.
+
 ## Develop
 
 ```bash

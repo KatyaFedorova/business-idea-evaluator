@@ -69,3 +69,35 @@ def test_the_page_is_served_at_the_root(client):
     response = client.get("/")
     assert response.status_code == 200
     assert "Business Idea Evaluator" in response.text
+
+
+def test_limits_reports_the_daily_budget_and_what_is_left(client):
+    from bie.budget import daily_spend
+
+    daily_spend.reset()
+    body = client.get("/api/limits").json()
+    assert body["max_cost_per_day_usd"] == Settings().max_cost_per_day_usd
+    assert body["spent_today_usd"] == 0.0
+
+    daily_spend.add(0.25)
+    assert client.get("/api/limits").json()["spent_today_usd"] == 0.25
+    daily_spend.reset()
+
+
+def test_a_round_is_refused_once_the_day_is_spent(fake_anthropic, valid_question_set):
+    """Regression guard for a public URL: the session cap does not bound the day."""
+    import json
+
+    from bie.budget import daily_spend
+
+    daily_spend.reset()
+    daily_spend.add(4.99)
+    fake = fake_anthropic(json.dumps(valid_question_set))
+    response = TestClient(
+        create_app(client_factory=lambda: fake), raise_server_exceptions=False
+    ).post("/api/questions", json={"idea": "A" * 60})
+    assert response.status_code == 402
+    assert response.json()["error"]["code"] == "budget_exceeded"
+    assert "tomorrow" in response.json()["error"]["message"]
+    assert fake.messages.calls[-1].get("messages") is None or "output_format" not in fake.messages.calls[-1]
+    daily_spend.reset()
