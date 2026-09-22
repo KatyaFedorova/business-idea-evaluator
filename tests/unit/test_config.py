@@ -19,6 +19,7 @@ def test_defaults():
     assert s.max_searches == 8
     assert s.max_cost_per_round_usd == 1.50
     assert s.max_cost_per_session_usd == 5.00
+    assert s.max_cost_per_day_usd == 2.00
     assert s.max_reasks == 3
 
 

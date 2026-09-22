@@ -91,7 +91,7 @@ def test_a_round_is_refused_once_the_day_is_spent(fake_anthropic, valid_question
     from bie.budget import daily_spend
 
     daily_spend.reset()
-    daily_spend.add(4.99)
+    daily_spend.add(1.99)
     fake = fake_anthropic(json.dumps(valid_question_set))
     response = TestClient(
         create_app(client_factory=lambda: fake), raise_server_exceptions=False

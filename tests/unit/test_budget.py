@@ -119,14 +119,14 @@ def test_the_daily_ledger_accumulates_and_refuses():
     settings = Settings()
     check_daily(1.0, settings, ledger)  # nothing spent yet
 
-    for _ in range(10):
+    for _ in range(4):
         record_spend(0.45, ledger)
-    assert ledger.spent == pytest.approx(4.5)
+    assert ledger.spent == pytest.approx(1.8)
 
-    check_daily(0.4, settings, ledger)  # 4.9 total, still under $5
+    check_daily(0.15, settings, ledger)  # 1.95 total, still under the $2 day cap
     with pytest.raises(BudgetExceeded) as exc:
-        check_daily(0.7, settings, ledger)
-    assert "5.00" in str(exc.value)
+        check_daily(0.30, settings, ledger)
+    assert "2.00" in str(exc.value)
     assert "tomorrow" in str(exc.value)
 
 
@@ -136,8 +136,8 @@ def test_the_daily_ledger_rolls_over_at_midnight_utc(monkeypatch):
     from bie import budget
 
     ledger = budget.DailySpend()
-    ledger.add(4.99)
-    assert ledger.spent == pytest.approx(4.99)
+    ledger.add(1.99)
+    assert ledger.spent == pytest.approx(1.99)
 
     tomorrow = datetime.now(UTC) + timedelta(days=1)
 

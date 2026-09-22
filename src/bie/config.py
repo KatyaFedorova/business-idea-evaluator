@@ -70,7 +70,7 @@ class Settings:
         default_factory=lambda: _float("BIE_MAX_COST_PER_SESSION_USD", 5.00)
     )
     max_cost_per_day_usd: float = field(
-        default_factory=lambda: _float("BIE_MAX_COST_PER_DAY_USD", 5.00)
+        default_factory=lambda: _float("BIE_MAX_COST_PER_DAY_USD", 2.00)
     )
     max_reasks: int = field(default_factory=lambda: _int("BIE_MAX_REASKS", 3))
 
