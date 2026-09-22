@@ -8,11 +8,13 @@ from __future__ import annotations
 
 import json
 import sys
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
 import yaml
 
+from bie.attachments import prepare_files
 from bie.claude import build_client
 from bie.config import Settings
 from bie.errors import BieError
@@ -21,6 +23,24 @@ from bie.schemas import FounderMessage, Round
 from evals import graders
 
 CASES_DIR = Path(__file__).parent / "cases"
+
+
+def eval_settings(production: bool = False) -> Settings:
+    """Cheap by default: the suite checks format and behaviour, not deep judgement.
+
+    Sonnet at medium effort with three searches costs roughly a third of a production
+    round. Pass production=True for the gate that must hold before a prompt ships.
+    """
+    settings = Settings()
+    if production:
+        return settings
+    return replace(
+        settings,
+        model=settings.eval_model,
+        question_effort=settings.eval_effort,
+        verdict_effort=settings.eval_effort,
+        max_searches=settings.eval_max_searches,
+    )
 
 
 def load_cases(directory: Path) -> list[dict]:
@@ -32,21 +52,61 @@ def load_cases(directory: Path) -> list[dict]:
     return cases
 
 
+def _case_attachments(case: dict, client: Any, settings: Settings) -> list:
+    paths = [CASES_DIR / p for p in case.get("attachments", [])]
+    return prepare_files(paths, client=client, settings=settings) if paths else []
+
+
 def _run_case(case: dict, settings: Settings, client: Any) -> tuple[Round, float]:
-    first = ask_questions(case["idea"], settings=settings, client=client)
-    if case.get("phase", "verdict") == "questions":
-        return first, first.cost_usd
-    answers = case.get("answers", "")
-    messages = [FounderMessage(text=a) for a in ([answers] if isinstance(answers, str) else answers)]
-    second = evaluate(
-        case["idea"],
-        rounds=[first],
-        answers=messages,
-        settings=settings,
-        client=client,
-        spent=first.cost_usd,
+    """Run the case to the round it is about, answering re-asks along the way.
+
+    A case that is not about vagueness must reach a verdict: otherwise every
+    structural grader fails with "no report on a reask round", which says nothing
+    about the prompt and everything about the harness.
+    """
+    attachments = _case_attachments(case, client, settings)
+    first = ask_questions(
+        case["idea"], attachments=attachments, settings=settings, client=client
     )
-    return second, first.cost_usd + second.cost_usd
+    spent = first.cost_usd
+    if case.get("phase", "verdict") == "questions":
+        return first, spent
+
+    answers = case.get("answers", "")
+    messages = [
+        FounderMessage(text=a, attachment_ids=[a_.id for a_ in attachments])
+        for a in ([answers] if isinstance(answers, str) else answers)
+    ]
+    rounds = [first]
+    allow_reask = case.get("expect_reask", False)
+    attempt_settings = settings if allow_reask else replace(settings, max_reasks=0)
+
+    current = evaluate(
+        case["idea"],
+        rounds=rounds,
+        answers=messages,
+        attachments=attachments,
+        settings=attempt_settings,
+        client=client,
+        spent=spent,
+    )
+    spent += current.cost_usd
+
+    # One more turn if it still asked: the founder repeats what they already said,
+    # and this time a verdict is required.
+    if current.kind == "reask" and not allow_reask:
+        rounds.append(current)
+        current = evaluate(
+            case["idea"],
+            rounds=rounds,
+            answers=messages,
+            attachments=attachments,
+            settings=replace(settings, max_reasks=0),
+            client=client,
+            spent=spent,
+        )
+        spent += current.cost_usd
+    return current, spent
 
 
 def _grade(case: dict, round_: Round) -> list[graders.GradeResult]:
@@ -64,8 +124,10 @@ def _grade(case: dict, round_: Round) -> list[graders.GradeResult]:
     return results
 
 
-def main(cases_dir: str | None = None, as_json: bool = False) -> int:
-    settings = Settings()
+def main(
+    cases_dir: str | None = None, as_json: bool = False, production: bool = False
+) -> int:
+    settings = eval_settings(production)
     if not settings.has_api_key:
         print("No ANTHROPIC_API_KEY set; the eval suite needs one.", file=sys.stderr)
         return 1
@@ -81,7 +143,8 @@ def main(cases_dir: str | None = None, as_json: bool = False) -> int:
             results = _grade(case, round_)
             failures = [r for r in results if not r.passed]
         except BieError as exc:
-            results, failures, cost = [], [graders.GradeResult("run", False, exc.message)], 0.0
+            detail = f"{exc.message} [{exc.code}] {(exc.detail or '')[:400]}"
+            results, failures, cost = [], [graders.GradeResult("run", False, detail)], 0.0
         total_cost += cost
         report.append(
             {

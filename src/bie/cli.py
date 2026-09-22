@@ -264,12 +264,15 @@ def serve(
 @eval_app.command("run")
 def eval_run(
     cases: str = typer.Option(None, "--cases", help="Directory of eval cases."),
+    production: bool = typer.Option(
+        False, "--production", help="Use the real model and effort instead of the cheap ones."
+    ),
     as_json: bool = JSON_OPT,
 ) -> None:
     """Run the graded eval suite and report the pass rate and cost."""
     from evals.run import main
 
-    raise typer.Exit(main(cases_dir=cases, as_json=as_json))
+    raise typer.Exit(main(cases_dir=cases, as_json=as_json, production=production))
 
 
 # `evaluate` is the command name; the function is suffixed to avoid shadowing the import.

@@ -69,11 +69,19 @@ class Settings:
     )
     max_reasks: int = field(default_factory=lambda: _int("BIE_MAX_REASKS", 3))
 
+    # The eval suite runs the whole flow several times over, so it gets its own,
+    # cheaper settings. `bie eval run --production` ignores these and uses the
+    # real ones, which is what must pass before a prompt change ships.
+    eval_model: str = field(default_factory=lambda: os.getenv("BIE_EVAL_MODEL", "claude-sonnet-5"))
+    eval_effort: str = field(default_factory=lambda: os.getenv("BIE_EVAL_EFFORT", "medium"))
+    eval_max_searches: int = field(default_factory=lambda: _int("BIE_EVAL_MAX_SEARCHES", 3))
+
     def __post_init__(self) -> None:
         for name, value in (
             ("BIE_EFFORT", self.effort),
             ("BIE_QUESTION_EFFORT", self.question_effort),
             ("BIE_VERDICT_EFFORT", self.verdict_effort),
+            ("BIE_EVAL_EFFORT", self.eval_effort),
         ):
             if value not in EFFORTS:
                 raise ValueError(f"{name} must be one of {EFFORTS}, got {value!r}")
@@ -83,6 +91,7 @@ class Settings:
             ("BIE_MAX_ATTACHMENTS", self.max_attachments),
             ("BIE_MAX_ATTACHMENT_MB", self.max_attachment_mb),
             ("BIE_MAX_SEARCHES", self.max_searches),
+            ("BIE_EVAL_MAX_SEARCHES", self.eval_max_searches),
             ("BIE_MAX_COST_PER_ROUND_USD", self.max_cost_per_round_usd),
             ("BIE_MAX_COST_PER_SESSION_USD", self.max_cost_per_session_usd),
         ):

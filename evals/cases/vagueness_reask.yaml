@@ -1,5 +1,6 @@
 name: vague answers are sent back, not assumed
 phase: verdict
+expect_reask: true
 idea: >-
   A subscription app that helps people stop doomscrolling by shaming them with their own
   voice. Ten dollars a month.
