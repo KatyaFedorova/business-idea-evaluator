@@ -159,16 +159,6 @@ function render() {
   const transcript = $("transcript");
   transcript.innerHTML = "";
 
-  if (session.rounds.length === 0) {
-    transcript.appendChild(
-      turn(
-        "EVALUATOR",
-        "Describe your idea on the left and press START. I ask questions first. You get no verdict until you answer them.",
-        "bot evaluator"
-      )
-    );
-  }
-
   session.rounds.forEach((round) => {
     (round.submission || []).forEach((message) => {
       if (message.text && message.text.trim()) {
@@ -402,13 +392,6 @@ function copyReport() {
 async function init() {
   try {
     limits = await (await fetch("/api/limits")).json();
-    if (limits) {
-      $("attachHint").textContent =
-        `Spreadsheets, images, PDFs or text. Up to ${limits.max_attachments} files, ` +
-        `${Math.round(limits.max_attachment_bytes / (1024 * 1024))} MB each.`;
-      $("ideaHint").textContent =
-        `At least ${limits.min_idea_chars} characters. Two to four sentences beats one word.`;
-    }
   } catch {
     /* the page still works; the server will enforce the limits anyway */
   }
