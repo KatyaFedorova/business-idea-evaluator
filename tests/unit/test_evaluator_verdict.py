@@ -144,3 +144,36 @@ def test_the_session_ceiling_counts_what_was_already_spent(
             settings=Settings(),
             spent=4.99,
         )
+
+
+def test_research_can_be_switched_off_entirely(
+    fake_anthropic, valid_question_set, valid_verdict, monkeypatch
+):
+    """BIE_MAX_SEARCHES=0 is the fast, cheap path for iterating on the UI.
+
+    The verdict still arrives, but it must be told it has no sources so it does not
+    present recalled knowledge as something it looked up.
+    """
+    monkeypatch.setenv("BIE_MAX_SEARCHES", "0")
+    settings = Settings()
+    assert settings.research_enabled is False
+
+    client = fake_anthropic(decision(valid_verdict))
+    round_ = evaluate(
+        IDEA,
+        rounds=[_question_round(valid_question_set)],
+        answers=_answers(),
+        client=client,
+        settings=settings,
+    )
+    call = client.messages.calls[-1]
+    assert not call.get("tools")
+    assert "Research is switched off" in call["system"][-1]["text"]
+    assert round_.report is not None
+    assert round_.research_status == "unavailable"
+
+
+def test_a_negative_search_budget_is_still_rejected(monkeypatch):
+    monkeypatch.setenv("BIE_MAX_SEARCHES", "-1")
+    with pytest.raises(ValueError):
+        Settings()

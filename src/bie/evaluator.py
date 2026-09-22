@@ -45,6 +45,10 @@ STEP_TWO = (
     "under 600 words. Each reason is one sentence of at most 25 words, each validation step "
     "at most 20 words, each research direction at most 25 words. Cut rather than run long."
 )
+NO_RESEARCH_NOTE = (
+    " Research is switched off for this run, so you have no sources: mark every market "
+    "claim as a guess and say plainly in your confidence line that nothing was verified."
+)
 STEP_TWO_FINAL = (
     " This is past the last round of questions allowed in this session: you must give a verdict "
     "now, however thin the answers are, and say plainly in your confidence line what is still "
@@ -198,7 +202,7 @@ def evaluate(
 
     system = prompts.load(settings.prompt_version)
     messages = _transcript(idea, rounds, answers, attachments)
-    tools = research_tools(settings)
+    tools = research_tools(settings) if settings.research_enabled else None
 
     projected = project_round_cost(
         client,
@@ -214,6 +218,8 @@ def evaluate(
 
     reasks = sum(1 for r in rounds if r.kind == "reask")
     instruction = STEP_TWO + (STEP_TWO_FINAL if reasks >= settings.max_reasks else "")
+    if not settings.research_enabled:
+        instruction += NO_RESEARCH_NOTE
 
     reply = complete(
         client,
@@ -223,7 +229,7 @@ def evaluate(
         schema=RoundDecision,
         effort=settings.verdict_effort,
         settings=settings,
-        research=True,
+        research=settings.research_enabled,
     )
     record_spend(reply.usage.cost_usd)
     decision: RoundDecision = reply.parsed

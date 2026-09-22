@@ -60,6 +60,8 @@ class Settings:
     max_attachment_mb: int = field(default_factory=lambda: _int("BIE_MAX_ATTACHMENT_MB", 10))
 
     # Research and cost control.
+    # 0 turns research off entirely: fast and cheap for iterating on the UI, but the
+    # verdict then rests on recalled knowledge, which is what FR-013 exists to prevent.
     max_searches: int = field(default_factory=lambda: _int("BIE_MAX_SEARCHES", 8))
     max_cost_per_round_usd: float = field(
         default_factory=lambda: _float("BIE_MAX_COST_PER_ROUND_USD", 1.50)
@@ -93,7 +95,6 @@ class Settings:
             ("BIE_MIN_IDEA_CHARS", self.min_idea_chars),
             ("BIE_MAX_ATTACHMENTS", self.max_attachments),
             ("BIE_MAX_ATTACHMENT_MB", self.max_attachment_mb),
-            ("BIE_MAX_SEARCHES", self.max_searches),
             ("BIE_EVAL_MAX_SEARCHES", self.eval_max_searches),
             ("BIE_MAX_COST_PER_ROUND_USD", self.max_cost_per_round_usd),
             ("BIE_MAX_COST_PER_SESSION_USD", self.max_cost_per_session_usd),
@@ -101,8 +102,16 @@ class Settings:
         ):
             if value <= 0:
                 raise ValueError(f"{name} must be greater than zero, got {value!r}")
-        if self.max_reasks < 0:
-            raise ValueError(f"BIE_MAX_REASKS must not be negative, got {self.max_reasks!r}")
+        for name, value in (
+            ("BIE_MAX_REASKS", self.max_reasks),
+            ("BIE_MAX_SEARCHES", self.max_searches),
+        ):
+            if value < 0:
+                raise ValueError(f"{name} must not be negative, got {value!r}")
+
+    @property
+    def research_enabled(self) -> bool:
+        return self.max_searches > 0
 
     @property
     def max_attachment_bytes(self) -> int:
