@@ -27,12 +27,6 @@ let busy = false;
 let lastAttempt = null;
 let timer = null;
 
-const SAMPLE =
-  "A subscription iOS app for people who doomscroll. It watches TikTok and Instagram usage " +
-  "with Apple's Screen Time APIs and, once you pass your daily limit, plays a recording of " +
-  "your own voice shaming you until you close the app. $4.99/month, aimed at 20-35 year olds " +
-  "who have already tried and abandoned three screen-time blockers.";
-
 /* ----------------------------- storage ----------------------------- */
 function openDb() {
   return new Promise((resolve, reject) => {
@@ -425,9 +419,6 @@ async function init() {
   $("startBtn").onclick = start;
   $("sendBtn").onclick = () => send(false);
   $("verdictBtn").onclick = () => send(true);
-  $("sampleBtn").onclick = () => {
-    $("idea").value = SAMPLE;
-  };
   $("clearBtn").onclick = clearSession;
   $("copyBtn").onclick = copyReport;
   $("retryBtn").onclick = () => lastAttempt && lastAttempt();
