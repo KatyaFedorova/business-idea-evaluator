@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from bie import budget
 from bie.attachments import delete_files, prepare_uploads
 from bie.claude import build_client
 from bie.config import ALLOWED_MEDIA_TYPES, Settings
@@ -19,6 +21,8 @@ from bie.evaluator import ask_questions, evaluate
 from bie.schemas import Attachment, FounderMessage, Round
 
 WEB_DIR = Path(__file__).resolve().parents[2] / "web"
+
+logger = logging.getLogger("bie")
 
 
 class QuestionsRequest(BaseModel):
@@ -48,8 +52,15 @@ def create_app(
     app = FastAPI(title="Business Idea Evaluator", version="0.1.0")
 
     @app.exception_handler(BieError)
-    async def _bie_error(_: Request, exc: BieError) -> JSONResponse:
-        # The founder sees exc.message. exc.detail stays in the process.
+    async def _bie_error(request: Request, exc: BieError) -> JSONResponse:
+        # The founder sees exc.message. exc.detail is logged and never returned.
+        logger.warning(
+            "%s on %s: %s | detail=%s",
+            exc.code,
+            request.url.path,
+            exc.message,
+            exc.detail or "-",
+        )
         return JSONResponse(status_code=exc.status_code, content=exc.as_payload())
 
     @app.get("/api/health")
@@ -72,6 +83,8 @@ def create_app(
             "allowed_media_types": sorted(ALLOWED_MEDIA_TYPES),
             "max_cost_per_round_usd": current.max_cost_per_round_usd,
             "max_cost_per_session_usd": current.max_cost_per_session_usd,
+            "max_cost_per_day_usd": current.max_cost_per_day_usd,
+            "spent_today_usd": round(budget.daily_spend.spent, 4),
             "max_reasks": current.max_reasks,
         }
 

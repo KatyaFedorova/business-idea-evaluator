@@ -129,7 +129,7 @@ def test_validation_plan_must_fit_two_weeks_and_need_no_code():
         ValidationPlan.model_validate({**base, "steps": []})
 
 
-def test_research_directions_and_kill_criteria_are_bounded(valid_verdict):
+def test_kill_criteria_are_bounded(valid_verdict):
     valid_verdict["kill_criteria"] = []
     with pytest.raises(ValidationError):
         VerdictReport.model_validate(valid_verdict)
@@ -138,17 +138,42 @@ def test_research_directions_and_kill_criteria_are_bounded(valid_verdict):
 def test_guesses_are_labelled(valid_verdict):
     report = VerdictReport.model_validate(valid_verdict)
     assert report.fails_because[2].is_guess is True
-    assert report.missing_data == ["Retention curves for screen-time apps"]
+    assert report.prior_art == ["Opal", "one sec"]
 
 
 def test_report_is_rejected_when_it_runs_long(valid_verdict):
-    valid_verdict["riskiest_assumption"] = "word " * 1000
-    with pytest.raises(ValidationError, match="900"):
+    valid_verdict["works_because"] = ["word " * 200, "b", "c"]
+    with pytest.raises(ValidationError):
         VerdictReport.model_validate(valid_verdict)
 
 
 def test_word_count_is_computed(valid_verdict):
-    assert 0 < VerdictReport.model_validate(valid_verdict).word_count < 900
+    assert 0 < VerdictReport.model_validate(valid_verdict).word_count < 400
+
+
+def test_each_field_has_a_hard_length_limit(valid_verdict):
+    """The limits are what keep the report -- and the bill -- small (FR-012)."""
+    for field, value in [
+        ("riskiest_assumption", "x" * 201),
+        ("confidence_movers", "x" * 201),
+    ]:
+        with pytest.raises(ValidationError):
+            VerdictReport.model_validate({**valid_verdict, field: value})
+
+    with pytest.raises(ValidationError):
+        VerdictReport.model_validate({**valid_verdict, "kill_criteria": ["x" * 121]})
+    with pytest.raises(ValidationError):
+        VerdictReport.model_validate(
+            {**valid_verdict, "works_because": ["x" * 151, "b", "c"]}
+        )
+
+
+def test_the_lists_are_capped_at_three(valid_verdict):
+    with pytest.raises(ValidationError):
+        VerdictReport.model_validate({**valid_verdict, "kill_criteria": ["a", "b", "c", "d"]})
+    plan = {**valid_verdict["validation_plan"], "steps": ["a", "b", "c", "d", "e"]}
+    with pytest.raises(ValidationError):
+        VerdictReport.model_validate({**valid_verdict, "validation_plan": plan})
 
 
 # --- Attachment ------------------------------------------------------------ #

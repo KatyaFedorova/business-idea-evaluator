@@ -107,10 +107,10 @@ def _print_report(round_: Round) -> None:
         console.print(f"  · {step}")
     console.print(f"  Pass: {plan.pass_threshold}")
     console.print(f"  Fail: {plan.fail_threshold}")
-    console.print("\n[bold]Research[/bold]")
-    for direction in report.research_directions:
-        who = f" ({direction.competitor})" if direction.competitor else ""
-        console.print(f"  · {direction.question}{who} — {direction.where_to_look}")
+    if report.prior_art:
+        console.print("\n[bold]This already exists as[/bold]")
+        for name in report.prior_art:
+            console.print(f"  · {name}")
     console.print("\n[bold]Kill criteria[/bold]")
     for item in report.kill_criteria:
         console.print(f"  · {item}")
@@ -264,12 +264,15 @@ def serve(
 @eval_app.command("run")
 def eval_run(
     cases: str = typer.Option(None, "--cases", help="Directory of eval cases."),
+    production: bool = typer.Option(
+        False, "--production", help="Use the real model and effort instead of the cheap ones."
+    ),
     as_json: bool = JSON_OPT,
 ) -> None:
     """Run the graded eval suite and report the pass rate and cost."""
     from evals.run import main
 
-    raise typer.Exit(main(cases_dir=cases, as_json=as_json))
+    raise typer.Exit(main(cases_dir=cases, as_json=as_json, production=production))
 
 
 # `evaluate` is the command name; the function is suffixed to avoid shadowing the import.

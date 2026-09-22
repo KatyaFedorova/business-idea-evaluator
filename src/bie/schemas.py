@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, StringConstraints, model_validator
 
 RoundKind = Literal["questions", "reask", "verdict"]
 Confidence = Literal["low", "medium", "high"]
@@ -41,7 +41,9 @@ _VERDICT_PATTERNS = (
 # The prompt targets ~600 words and the eval suite holds the line at 700. This is the
 # runaway stop, not the style rule: rejecting a 760-word report would show the founder an
 # error instead of a perfectly good verdict.
-WORD_LIMIT = 900
+# The report is the output, so its length is the bill. maxLength on each field is what
+# actually holds the line -- structured outputs enforce it -- and this is the backstop.
+WORD_LIMIT = 400
 
 
 def _words(value: object) -> int:
@@ -99,16 +101,16 @@ class ReAsk(QuestionSet):
 
 class FailureMode(BaseModel):
     rank: int = Field(ge=1, le=3, description="1 is the most likely to kill the idea.")
-    text: str = Field(min_length=1)
+    text: str = Field(min_length=1, max_length=150, description="One line. No preamble.")
     is_guess: bool = Field(description="True when this is inference rather than known fact.")
 
 
 class ValidationPlan(BaseModel):
-    assumption_tested: str = Field(min_length=1)
-    steps: list[str] = Field(min_length=1, max_length=8)
-    who_to_talk_to: str = Field(min_length=1)
-    pass_threshold: str = Field(min_length=1)
-    fail_threshold: str = Field(min_length=1)
+    assumption_tested: str = Field(min_length=1, max_length=150)
+    steps: list[str] = Field(min_length=1, max_length=4, description="At most four steps.")
+    who_to_talk_to: str = Field(min_length=1, max_length=150)
+    pass_threshold: str = Field(min_length=1, max_length=120, description="A number, not prose.")
+    fail_threshold: str = Field(min_length=1, max_length=120, description="A number, not prose.")
     duration_days: int = Field(ge=1, le=14, description="Under two weeks.")
     requires_code: bool = Field(description="Must be false: the test is a no-code test.")
 
@@ -119,31 +121,32 @@ class ValidationPlan(BaseModel):
         return self
 
 
-class ResearchDirection(BaseModel):
-    question: str = Field(min_length=1)
-    where_to_look: str = Field(min_length=1)
-    competitor: str | None = None
-    what_to_check: str | None = None
-
-
 class VerdictReport(BaseModel):
     """Step 2: the verdict, exactly as the owner's prompt specifies it."""
 
     verdict: VerdictKind
     verdict_condition: str | None = Field(
-        default=None, description="The X in PROCEED ONLY AFTER TESTING X. Null for other verdicts."
+        default=None,
+        max_length=150,
+        description="The X in PROCEED ONLY AFTER TESTING X. Null for other verdicts.",
     )
     confidence: Confidence
-    confidence_movers: str = Field(min_length=1)
-    works_because: list[str] = Field(min_length=3, max_length=3)
+    confidence_movers: str = Field(min_length=1, max_length=200)
+    works_because: list[Annotated[str, StringConstraints(min_length=1, max_length=150)]] = Field(
+        min_length=3, max_length=3, description="One line each. Bullets, not sentences."
+    )
     fails_because: list[FailureMode] = Field(min_length=3, max_length=3)
-    riskiest_assumption: str = Field(min_length=1)
+    riskiest_assumption: str = Field(min_length=1, max_length=200)
     validation_plan: ValidationPlan
-    research_directions: list[ResearchDirection] = Field(min_length=1, max_length=6)
-    kill_criteria: list[str] = Field(min_length=1, max_length=5)
-    contradictions: list[str] = Field(default_factory=list, max_length=5)
-    prior_art: list[str] = Field(default_factory=list, max_length=5)
-    missing_data: list[str] = Field(default_factory=list, max_length=5)
+    kill_criteria: list[Annotated[str, StringConstraints(min_length=1, max_length=120)]] = Field(
+        min_length=1, max_length=3
+    )
+    contradictions: list[str] = Field(default_factory=list, max_length=3)
+    prior_art: list[Annotated[str, StringConstraints(min_length=1, max_length=80)]] = Field(
+        default_factory=list,
+        max_length=3,
+        description="Existing products this is a worse version of. Names only.",
+    )
 
     @model_validator(mode="after")
     def _condition_matches_verdict(self) -> VerdictReport:

@@ -6,6 +6,12 @@ not reconciled after it.
 
 from __future__ import annotations
 
+import json
+import os
+import tempfile
+import threading
+from datetime import UTC, date, datetime
+from pathlib import Path
 from typing import Any
 
 from bie.config import Settings
@@ -14,10 +20,14 @@ from bie.pricing import WEB_SEARCH_COST_PER_SEARCH_USD, cost_usd
 
 __all__ = [
     "BudgetExceeded",
+    "DailySpend",
+    "check_daily",
     "check_round",
     "check_session",
     "countable",
+    "daily_spend",
     "project_round_cost",
+    "record_spend",
 ]
 
 # The token-counting endpoint refuses file sources ("File sources are not supported in
@@ -93,3 +103,104 @@ def check_session(*, spent: float, projected: float, settings: Settings) -> None
 
 def search_cost(searches: int) -> float:
     return searches * WEB_SEARCH_COST_PER_SEARCH_USD
+
+
+class DailySpend:
+    """Today's spend, shared by every request this process serves.
+
+    A per-session ceiling stops one founder running away with your money. It does
+    nothing about a hundred founders, which is the shape of the risk the moment the
+    URL is public. This is the day-level stop.
+
+    Backed by a small JSON file so it outlives one process: without that, every local
+    script started at zero and the ceiling never bit during development, which is exactly
+    when the accidental spending happens. Still per machine and per instance, so it is a
+    brake, not a guarantee -- the guarantee belongs in the Anthropic Console as a budget
+    on the key.
+    """
+
+    def __init__(self, path: Path | None = None) -> None:
+        self._lock = threading.Lock()
+        self._path = path if path is not None else default_ledger_path()
+        self._day: date = datetime.now(UTC).date()
+        self._spent: float = 0.0
+        self._read()
+
+    def _read(self) -> None:
+        try:
+            data = json.loads(self._path.read_text())
+            day = date.fromisoformat(data["day"])
+        except Exception:  # noqa: BLE001 - a missing or broken ledger starts at zero
+            return
+        if day == datetime.now(UTC).date():
+            self._day = day
+            self._spent = float(data.get("spent_usd", 0.0))
+
+    def _write(self) -> None:
+        try:
+            self._path.parent.mkdir(parents=True, exist_ok=True)
+            self._path.write_text(
+                json.dumps({"day": self._day.isoformat(), "spent_usd": round(self._spent, 6)})
+            )
+        except OSError:
+            # A read-only filesystem (a serverless instance, say) keeps the in-memory brake.
+            pass
+
+    def _roll(self) -> None:
+        today = datetime.now(UTC).date()
+        if today != self._day:
+            self._day = today
+            self._spent = 0.0
+            self._write()
+
+    @property
+    def spent(self) -> float:
+        with self._lock:
+            self._roll()
+            return self._spent
+
+    def add(self, amount: float) -> float:
+        with self._lock:
+            self._roll()
+            self._spent += max(0.0, amount)
+            self._write()
+            return self._spent
+
+    def reset(self) -> None:
+        with self._lock:
+            self._day = datetime.now(UTC).date()
+            self._spent = 0.0
+            self._write()
+
+
+def default_ledger_path() -> Path:
+    """Where the day's spend is kept. Home when writable, the temp dir otherwise."""
+    override = os.getenv("BIE_LEDGER_PATH")
+    if override:
+        return Path(override)
+    home = Path.home() / ".bie" / "spend.json"
+    try:
+        home.parent.mkdir(parents=True, exist_ok=True)
+        return home
+    except OSError:
+        return Path(tempfile.gettempdir()) / "bie-spend.json"
+
+
+daily_spend = DailySpend()
+
+
+def check_daily(projected: float, settings: Settings, ledger: DailySpend | None = None) -> None:
+    """Refuse a round that would take today's total past the daily ceiling."""
+    ledger = ledger or daily_spend
+    spent = ledger.spent
+    if spent + projected > settings.max_cost_per_day_usd:
+        raise BudgetExceeded(
+            f"This site has spent its daily budget of "
+            f"${settings.max_cost_per_day_usd:.2f} on evaluations. Come back tomorrow.",
+            detail=f"spent_today={spent} projected={projected}",
+        )
+
+
+def record_spend(amount: float, ledger: DailySpend | None = None) -> float:
+    """Called after a round returns, with what it actually cost."""
+    return (ledger or daily_spend).add(amount)

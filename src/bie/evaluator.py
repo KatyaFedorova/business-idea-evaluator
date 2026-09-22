@@ -12,7 +12,7 @@ from typing import Any
 
 from bie import prompts
 from bie.attachments import content_blocks
-from bie.budget import check_round, check_session, project_round_cost
+from bie.budget import check_daily, check_round, check_session, project_round_cost
 from bie.claude import build_client, complete, research_tools
 from bie.config import Settings
 from bie.errors import IdeaTooShort
@@ -35,9 +35,16 @@ STEP_TWO = (
     "would rest on your assumption rather than their fact, set decision to reask, say in the "
     "note exactly what was vague, and ask again. Otherwise set decision to verdict: lead with "
     "the verdict, label every guess, name real competitors you actually found, point at any "
-    "contradiction between the founder's own answers. HARD LIMIT: the whole report must be "
-    "under 600 words. Each reason is one sentence of at most 25 words, each validation step "
-    "at most 20 words, each research direction at most 25 words. Cut rather than run long."
+    "contradiction between the founder's own answers. LENGTH: the whole report must read as "
+    "bullets and stay under 300 words. One line per reason, per step, per criterion — no "
+    "sentence over 20 words, no preamble, no restating the idea back. Cut rather than run "
+    "long; the schema will reject anything that does not fit. The report has no field for "
+    "research directions or missing data: name existing products in prior_art and put "
+    "anything you would need to check into the validation plan instead."
+)
+NO_RESEARCH_NOTE = (
+    " Research is switched off for this run, so you have no sources: mark every market "
+    "claim as a guess and say plainly in your confidence line that nothing was verified."
 )
 STEP_TWO_FINAL = (
     " This is past the last round of questions allowed in this session: you must give a verdict "
@@ -152,6 +159,7 @@ def ask_questions(
         client, model=settings.model, system=system, messages=messages, settings=settings
     )
     check_round(projected, settings)
+    check_daily(projected, settings)
 
     reply = complete(
         client,
@@ -190,7 +198,7 @@ def evaluate(
 
     system = prompts.load(settings.prompt_version)
     messages = _transcript(idea, rounds, answers, attachments)
-    tools = research_tools(settings)
+    tools = research_tools(settings) if settings.research_enabled else None
 
     projected = project_round_cost(
         client,
@@ -202,9 +210,12 @@ def evaluate(
     )
     check_round(projected, settings)
     check_session(spent=spent, projected=projected, settings=settings)
+    check_daily(projected, settings)
 
     reasks = sum(1 for r in rounds if r.kind == "reask")
     instruction = STEP_TWO + (STEP_TWO_FINAL if reasks >= settings.max_reasks else "")
+    if not settings.research_enabled:
+        instruction += NO_RESEARCH_NOTE
 
     reply = complete(
         client,
@@ -214,7 +225,7 @@ def evaluate(
         schema=RoundDecision,
         effort=settings.verdict_effort,
         settings=settings,
-        research=True,
+        research=settings.research_enabled,
     )
     decision: RoundDecision = reply.parsed
     is_reask = decision.decision == "reask"

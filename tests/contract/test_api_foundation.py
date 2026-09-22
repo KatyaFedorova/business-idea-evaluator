@@ -69,3 +69,55 @@ def test_the_page_is_served_at_the_root(client):
     response = client.get("/")
     assert response.status_code == 200
     assert "Business Idea Evaluator" in response.text
+
+
+def test_limits_reports_the_daily_budget_and_what_is_left(client, isolated_ledger):
+    daily_spend = isolated_ledger
+    daily_spend.reset()
+    body = client.get("/api/limits").json()
+    assert body["max_cost_per_day_usd"] == Settings().max_cost_per_day_usd
+    assert body["spent_today_usd"] == 0.0
+
+    daily_spend.add(0.25)
+    assert client.get("/api/limits").json()["spent_today_usd"] == 0.25
+    daily_spend.reset()
+
+
+def test_a_round_is_refused_once_the_day_is_spent(
+    fake_anthropic, valid_question_set, isolated_ledger
+):
+    """Regression guard for a public URL: the session cap does not bound the day."""
+    import json
+
+    daily_spend = isolated_ledger
+    daily_spend.reset()
+    daily_spend.add(1.99)
+    fake = fake_anthropic(json.dumps(valid_question_set))
+    response = TestClient(
+        create_app(client_factory=lambda: fake), raise_server_exceptions=False
+    ).post("/api/questions", json={"idea": "A" * 60})
+    assert response.status_code == 402
+    assert response.json()["error"]["code"] == "budget_exceeded"
+    assert "tomorrow" in response.json()["error"]["message"]
+    assert fake.messages.calls[-1].get("messages") is None or "output_format" not in fake.messages.calls[-1]
+    daily_spend.reset()
+
+
+def test_error_detail_is_logged_even_though_it_is_not_returned(caplog):
+    """The envelope hides internal detail from the founder; it must still reach the log,
+    or a production failure leaves nothing to diagnose."""
+    import logging
+
+    app = create_app(mount_static=False)
+
+    @app.get("/boom")
+    def boom():
+        raise UpstreamError("We could not reach the evaluator.", detail="why it really broke")
+
+    with caplog.at_level(logging.WARNING, logger="bie"):
+        response = TestClient(app, raise_server_exceptions=False).get("/boom")
+
+    assert response.status_code == 502
+    assert "why it really broke" not in response.text
+    assert "why it really broke" in caplog.text
+    assert "upstream_error" in caplog.text

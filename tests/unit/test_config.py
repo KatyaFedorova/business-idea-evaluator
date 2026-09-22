@@ -19,6 +19,7 @@ def test_defaults():
     assert s.max_searches == 8
     assert s.max_cost_per_round_usd == 1.50
     assert s.max_cost_per_session_usd == 5.00
+    assert s.max_cost_per_day_usd == 2.00
     assert s.max_reasks == 3
 
 
@@ -59,7 +60,6 @@ def test_invalid_effort_fails_at_construction(monkeypatch, field):
         "BIE_MAX_COST_PER_SESSION_USD",
         "BIE_MAX_ATTACHMENTS",
         "BIE_MAX_ATTACHMENT_MB",
-        "BIE_MAX_SEARCHES",
         "BIE_MIN_IDEA_CHARS",
     ],
 )
@@ -67,6 +67,20 @@ def test_non_positive_limits_fail_at_construction(monkeypatch, env):
     monkeypatch.setenv(env, "0")
     with pytest.raises(ValueError):
         Settings()
+
+
+def test_zero_searches_means_research_is_off_not_invalid():
+    """A search budget of 0 is a deliberate switch, unlike a ceiling of 0."""
+    import os
+
+    os.environ["BIE_MAX_SEARCHES"] = "0"
+    try:
+        settings = Settings()
+        assert settings.max_searches == 0
+        assert settings.research_enabled is False
+    finally:
+        del os.environ["BIE_MAX_SEARCHES"]
+    assert Settings().research_enabled is True
 
 
 def test_attachment_bytes_is_derived():

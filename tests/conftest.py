@@ -111,6 +111,16 @@ class FakeAnthropic:
         self.messages = FakeMessages(message)
 
 
+@pytest.fixture(autouse=True)
+def isolated_ledger(tmp_path, monkeypatch):
+    """No test may touch the real spend ledger in ~/.bie/spend.json."""
+    from bie import budget
+
+    monkeypatch.setenv("BIE_LEDGER_PATH", str(tmp_path / "spend.json"))
+    monkeypatch.setattr(budget, "daily_spend", budget.DailySpend(path=tmp_path / "spend.json"))
+    return budget.daily_spend
+
+
 @pytest.fixture
 def fake_anthropic():
     """Factory: build a fake client whose single call returns `text` (and blocks)."""
@@ -175,18 +185,9 @@ def valid_verdict() -> dict:
             "duration_days": 10,
             "requires_code": False,
         },
-        "research_directions": [
-            {
-                "question": "What is Opal's retention?",
-                "where_to_look": "App Store reviews and Sensor Tower",
-                "competitor": "Opal",
-                "what_to_check": "Refund complaints",
-            }
-        ],
         "kill_criteria": ["Fewer than 3 pre-orders in two weeks"],
         "contradictions": [],
         "prior_art": ["Opal", "one sec"],
-        "missing_data": ["Retention curves for screen-time apps"],
     }
 
 

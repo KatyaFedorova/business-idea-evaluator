@@ -59,8 +59,9 @@ next turn with every named section present and the verdict line first.
 5. **Given** any submission, **When** the analysis fails or the reply is missing a
    required section, **Then** the founder sees a clear failure with a retry option and is
    never shown a partial or invented report.
-6. **Given** a completed round, **When** the founder looks at the result, **Then** the
-   cost of that round is visible to them.
+6. **Given** a completed round, **When** the owner inspects the API response or the CLI
+   output, **Then** the cost of that round is recorded there. The page does not show it:
+   the founder is reading a verdict, not an invoice.
 
 ---
 
@@ -180,25 +181,31 @@ verdict refers to specific content from those files.
   distribution channel, and how the founder would know within 30 days that they are wrong.
 - **FR-005**: Visitors MUST be able to answer the questions on the page and submit those
   answers to obtain a verdict.
-- **FR-006**: When answers are vague, the system MUST say so and re-ask rather than
-  filling the gap with an assumption and proceeding to a verdict.
+- **FR-006**: When answers are vague, the system MUST be able to say so and re-ask rather
+  than filling the gap with an assumption. The number of re-asks allowed in a session is
+  configurable and MAY be zero, in which case the evaluator MUST still deliver a verdict
+  and say in its confidence line what remained unknown. Each re-ask is a full round at full
+  cost, which is why the limit exists.
 - **FR-007**: The verdict report MUST open with exactly one of PROCEED, PROCEED ONLY AFTER
   TESTING X, or DON'T PROCEED as its first line, without hedging.
 - **FR-008**: The verdict report MUST contain, in order: the verdict line; confidence
   (low/medium/high) with what would move it; three strongest reasons it works; three most
   likely reasons it fails, ranked by how likely they are to kill it; the single riskiest
   assumption; a validation plan testing that assumption in under two weeks with no code,
-  giving exact steps, who to talk to, and what counts as a pass versus a fail; specific
-  research questions with named competitors and what to check about them; and kill criteria.
+  giving at most four steps, who to talk to, and a numeric pass and fail threshold; and at
+  most three kill criteria. Anything the founder would need to look up belongs in the
+  validation plan; the report carries no separate research section.
 - **FR-009**: The verdict report MUST separate what the evaluator knows from what it is
   guessing, with guesses explicitly labelled.
 - **FR-010**: The verdict report MUST name the existing product when the idea is a worse
-  version of something that already exists, and MUST name the specific data and how to get
-  it when it would need data neither party has.
+  version of something that already exists. Data neither party has belongs in the validation
+  plan as something to go and find, not in a list of its own.
 - **FR-011**: The verdict report MUST point at contradictions between the founder's own
   answers rather than resolving them silently.
-- **FR-012**: The verdict report MUST lead with the problem and contain no encouragement
-  padding, and MUST stay at approximately 600 words or fewer, favouring bullets over prose.
+- **FR-012**: The verdict report MUST lead with the problem, contain no encouragement
+  padding, and read as bullets rather than prose: one line per reason, per step and per
+  criterion, under 300 words in total. Field-level length limits MUST be enforced by the
+  schema so a long reply is impossible rather than merely discouraged.
 - **FR-013**: The evaluation MUST perform live research at evaluation time and ground its
   market claims in sources retrieved during the round, not in recalled consensus. Named
   competitors and cited evidence MUST come from those sources.
@@ -208,8 +215,10 @@ verdict refers to specific content from those files.
 - **FR-015**: The verdict report MUST make its sources inspectable to the visitor, so a
   named competitor or a cited figure can be traced back to where it came from.
 - **FR-016**: When research is unavailable, returns nothing usable, or is cut short by the
-  cost ceiling, the system MUST still produce a verdict, MUST label every affected claim as
-  unverified, and MUST tell the visitor that the research step was degraded.
+  cost ceiling, the system MUST still produce a verdict and MUST label every affected claim
+  as a guess within the report itself. The research status MUST be recorded in the API
+  response, but MUST NOT be announced as a banner on the page: with research switched off
+  by configuration it would appear on every verdict and mean nothing.
 - **FR-017**: Research MUST be bounded so that a single round stays within the
   per-evaluation cost ceiling and within a reasonable wait, and content retrieved during
   research MUST be treated as material to be weighed, never as instructions (see FR-028).
@@ -219,9 +228,11 @@ verdict refers to specific content from those files.
 - **FR-019**: The system MUST show a visible in-progress state from submission until the
   reply or an error arrives, and MUST prevent duplicate concurrent submissions within one
   session.
-- **FR-020**: The system MUST display the cost of each round to the visitor, and MUST
-  refuse to start a round whose projected cost exceeds the project's per-evaluation
-  ceiling, explaining why.
+- **FR-020**: The system MUST record the cost of each round in its API response and CLI
+  output, and MUST refuse to start a round whose projected cost exceeds the project's
+  per-round, per-session or per-day ceiling, explaining why. The cost MUST NOT be shown on
+  the page: it is operator information, not something the founder needs while reading a
+  verdict.
 - **FR-021**: Every round MUST take the original description plus all questions, answers,
   added detail, and attachments from earlier rounds into account.
 - **FR-022**: The system MUST keep every round of a session readable and in order, and
@@ -253,9 +264,10 @@ verdict refers to specific content from those files.
 - **FR-033**: Founders MUST be able to answer in as many messages as they choose rather
   than being forced into one combined form, and MUST be able to attach files to any
   message.
-- **FR-034**: When the founder revises the idea box after the conversation has started,
-  the revised idea MUST be what the next round evaluates, and the revision MUST be visible
-  in the conversation so the transcript never silently disagrees with the idea box.
+- **FR-034**: When the founder edits the idea box after the conversation has started, the
+  edited idea MUST be what the next round evaluates, and the change MUST be recorded in the
+  conversation so the transcript never silently disagrees with the idea box. No separate
+  save step is required: editing the box is the act of revising the idea.
 - **FR-035**: The interface MUST NOT present numeric scores, ratings, or percentage
   judgements of the idea anywhere; the verdict line and confidence level are the only
   summary judgements shown.
@@ -289,7 +301,7 @@ verdict refers to specific content from those files.
 - **SC-004**: No visitor is ever shown a partial, invented, or section-missing report —
   zero occurrences across the acceptance and eval suites.
 - **SC-005**: 100% of verdict reports open with one of the three permitted verdict lines
-  and stay within approximately 600 words.
+  and stay under 300 words.
 - **SC-006**: Deliberately vague answers trigger a re-ask rather than a verdict in at least
   90% of eval cases built for that purpose.
 - **SC-007**: A founder can add detail and obtain an updated verdict in under 30 seconds of
@@ -298,14 +310,15 @@ verdict refers to specific content from those files.
   cases on a supported browser.
 - **SC-009**: Verdicts produced with attachments refer to the attached material in at least
   90% of cases where it is relevant.
-- **SC-010**: Every round's cost is visible, and no round exceeds the per-evaluation ceiling.
+- **SC-010**: Every round's cost is recorded in the response, and no round exceeds the
+  per-round, per-session or per-day ceiling.
 - **SC-011**: Attempts to steer the evaluator through instructions embedded in the idea
   text, answers, attachments, or retrieved pages do not change the verdict, verified by
   dedicated eval cases.
 - **SC-013**: At least 90% of competitors named in a verdict report are real, currently
   operating, and traceable to a source retrieved during that round.
 - **SC-014**: When research fails or returns nothing usable, 100% of reports still deliver
-  a verdict and mark the affected claims as unverified.
+  a verdict and mark the affected claims as guesses inside the report.
 - **SC-012**: Encouragement padding and hedging are absent from verdict reports in at least
   95% of eval cases scored for tone.
 

@@ -50,12 +50,10 @@ on the round, not a separate class, so the re-ask path reuses one validator.
 | `fails_because` | list[FailureMode] | exactly 3, ordered most-lethal first |
 | `riskiest_assumption` | str | non-empty |
 | `validation_plan` | ValidationPlan | required |
-| `research_directions` | list[ResearchDirection] | 1–6 |
 | `kill_criteria` | list[str] | 1–5 |
 | `contradictions` | list[str] | may be empty; FR-011 |
 | `prior_art` | list[str] | named existing products when the idea is a worse version; FR-010 |
-| `missing_data` | list[str] | data neither party has, and how to get it; FR-010 |
-| `word_count` | int | computed property, not a model-filled field; validated ≤ 900 as a runaway stop. The ~600-word target is enforced by the prompt and by the eval suite at 700. |
+| `word_count` | int | computed property, not a model-filled field; validated ≤ 400 as a runaway stop. The 300-word target is enforced by per-field `maxLength` limits, which structured outputs applies while the model writes. |
 
 ### FailureMode **(model output)**
 `rank` (1–3), `text` (non-empty), `is_guess` (bool — Principle/FR-009 labelling).
@@ -64,11 +62,6 @@ on the round, not a separate class, so the re-ask path reuses one validator.
 `assumption_tested`, `steps` (1–8 strings), `who_to_talk_to`, `pass_threshold`,
 `fail_threshold`, `duration_days` (1–14, enforcing "under two weeks"), `requires_code` (must be
 `False`; a plan that needs code fails validation).
-
-### ResearchDirection **(model output)**
-`question` (non-empty), `where_to_look` (non-empty), `competitor` (str \| None),
-`what_to_check` (str \| None). A direction as vague as "research the market" is caught by an eval
-case, not a validator.
 
 ### Source
 `url`, `title`, `accessed_at`. Extracted from search result blocks, never model-authored.

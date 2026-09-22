@@ -1,6 +1,8 @@
 <!--
 Sync Impact Report
-Version change: none (unversioned template) → 1.0.0 → 1.0.1 (PATCH: named the cost ceilings)
+Version change: none (unversioned template) → 1.0.0 → 1.0.1 (PATCH: named the cost
+  ceilings) → 1.1.0 (MINOR: eval runs require explicit per-run permission) → 1.1.1
+  (PATCH: daily ceiling named at $2.00, cost need not be shown in the interface)
 Modified principles:
   [PRINCIPLE_1_NAME] → I. Test-First (NON-NEGOTIABLE)
   [PRINCIPLE_2_NAME] → II. Schema-Validated Model Output
@@ -12,7 +14,7 @@ Added sections:
   Development Workflow (was [SECTION_3_NAME])
 Removed sections: none
 Deferred TODOs:
-  (closed in 1.0.1: the ceilings are $1.50 per round and $5.00 per session)
+  (closed in 1.0.1; ceilings named in the principle itself as of 1.1.1)
   Eval-suite gating was offered and not adopted; evals remain encouraged, not governed.
 This report is scratch material for reviewing the amendment and should be deleted
 before committing the amended file.
@@ -58,15 +60,30 @@ place where "the model answered" becomes "the model answered correctly enough to
 ### III. Cost Is Measured and Capped
 
 Every Claude call MUST record its input tokens, output tokens, and computed cost through
-`src/bie/pricing.py`. Every evaluation run MUST expose its total cost to the caller — in
-CLI output, in API responses, and in eval reports. A per-evaluation cost ceiling MUST be
-enforced in code, not by convention: when a run would exceed the ceiling it MUST stop
-with a clear error rather than complete and bill.
-TODO(COST_CEILING): choose the ceiling value and the environment variable that carries it.
+`src/bie/pricing.py`. Every round MUST report its cost to the caller in API responses,
+in CLI output and in eval reports; the cost is operator information and need not appear
+in the interface. Three ceilings MUST be enforced in code, before the call and not
+reconciled after it — $1.50 for one round (`BIE_MAX_COST_PER_ROUND_USD`), $5.00 for one
+session (`BIE_MAX_COST_PER_SESSION_USD`), and $2.00 for the whole site in one UTC day
+(`BIE_MAX_COST_PER_DAY_USD`). All three are environment-overridable, and a run that would
+exceed any of them MUST stop with a clear error rather than complete and bill.
+
+The daily ceiling is an in-process counter, so it is per instance and resets on restart:
+it is a brake, not a guarantee. The guarantee belongs on the key itself, as a budget in
+the Anthropic Console.
+
+The eval suite spends money on every case, so it MUST NOT be run without the owner's
+explicit permission for that run. Permission is per run and is never implied by a task
+list, a checklist item, a merge gate, or a previous approval. It MUST NOT run in CI, on a
+commit, on a push, or on a schedule. It SHOULD be run only when a change could alter model
+behaviour — the prompt, the schemas, the evaluator, the model or effort settings, or the
+graders themselves — and MUST NOT be run for changes that cannot, such as the web UI, the
+CLI's presentation, documentation, or test-only edits.
 
 Rationale: this is a tool whose core operation costs real money per invocation, and batch
 eval runs multiply that cost by the size of the dataset. A cap enforced in code is the
-only kind that survives a loop with a bug in it.
+only kind that survives a loop with a bug in it. The eval suite is the one thing here that
+spends without a person asking for an evaluation, which is exactly why asking is required.
 
 ### IV. Locked Stack, Minimal Surface
 
@@ -112,7 +129,8 @@ Feature work follows the Spec Kit flow: `/speckit-specify` to write the spec,
 design, `/speckit-tasks` for the ordered task list, and `/speckit-implement` to build it.
 Each feature is developed on its own branch. Before a branch merges: every task in
 `tasks.md` is complete or explicitly deferred in writing, `pytest` passes, `ruff` reports
-no errors, and the change is checked against each principle above. A change that violates
+no errors, and the change is checked against each principle above. The eval suite is not
+part of that gate: it runs only when the owner asks for it, per Principle III. A change that violates
 a principle MUST either be reworked or accompanied by an amendment to this constitution
 in the same branch — never merged as a silent exception.
 
@@ -134,4 +152,4 @@ Complexity that appears to violate Principle IV MUST be justified in the feature
 or removed. Unresolved `TODO(...)` markers in this document are open governance debt and
 SHOULD be closed before the feature that depends on them is planned.
 
-**Version**: 1.0.1 | **Ratified**: 2026-09-21 | **Last Amended**: 2026-09-21
+**Version**: 1.1.1 | **Ratified**: 2026-09-21 | **Last Amended**: 2026-09-22

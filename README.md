@@ -34,8 +34,31 @@ cp .env.example .env    # then set ANTHROPIC_API_KEY
 bie serve                       # http://127.0.0.1:8000
 bie ask "my idea..."            # round one from the terminal
 bie verdict --session s.json --answers "..."
-bie eval run                    # the graded eval suite (spends money)
+bie eval run                    # the graded eval suite — SPENDS MONEY, ask first
 ```
+
+## Deploy
+
+Free on Vercel Hobby — see [DEPLOY.md](DEPLOY.md). Set `BIE_MAX_ATTACHMENT_MB=4` there,
+because Vercel caps request bodies at 4.5 MB.
+
+## The eval suite spends money
+
+`bie eval run` makes ~16 live calls. It is never run automatically: not in CI, not on a
+commit, not as a merge gate. Run it only when a change could alter model behaviour — the
+prompt, the schemas, the evaluator, the model or effort settings, or the graders — and only
+when the owner has asked for that run. See Principle III in `.specify/memory/constitution.md`.
+
+## Debugging a failure without paying for it twice
+
+```bash
+BIE_RECORD=1 bie ask "..."            # writes the reply to tests/fixtures/
+BIE_REPLAY=tests/fixtures/reply-*.json bie ask "..."   # no API call at all
+```
+
+Every call is charged to the day's ledger the moment it returns, including calls whose reply
+fails validation — those are billed by Anthropic too, and pretending otherwise understated
+the spend. The ledger lives in `~/.bie/spend.json` so it survives between runs.
 
 ## Develop
 

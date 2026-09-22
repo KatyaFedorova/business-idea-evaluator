@@ -27,12 +27,6 @@ let busy = false;
 let lastAttempt = null;
 let timer = null;
 
-const SAMPLE =
-  "A subscription iOS app for people who doomscroll. It watches TikTok and Instagram usage " +
-  "with Apple's Screen Time APIs and, once you pass your daily limit, plays a recording of " +
-  "your own voice shaming you until you close the app. $4.99/month, aimed at 20-35 year olds " +
-  "who have already tried and abandoned three screen-time blockers.";
-
 /* ----------------------------- storage ----------------------------- */
 function openDb() {
   return new Promise((resolve, reject) => {
@@ -79,10 +73,6 @@ function esc(value) {
   return d.innerHTML;
 }
 
-function money(value) {
-  return `$${Number(value || 0).toFixed(4)}`;
-}
-
 function turn(who, bodyHtml, extraClass = "") {
   const wrap = document.createElement("div");
   wrap.className = `msg ${extraClass}`.trim();
@@ -97,8 +87,7 @@ function questionsHtml(round) {
   const items = round.questions.questions
     .map((q) => `<li>${esc(q.text)}</li>`)
     .join("");
-  return `${note}<ol class="qlist">${items}</ol>
-    <div class="cost">${esc(round.usage ? round.usage.model : "")} &middot; ${money(round.cost_usd)}</div>`;
+  return `${note}<ol class="qlist">${items}</ol>`;
 }
 
 function verdictLine(report) {
@@ -118,29 +107,16 @@ function reportHtml(round) {
     .sort((a, b) => a.rank - b.rank)
     .map((f) => `${esc(f.text)}${f.is_guess ? ' <span class="guess">(guess)</span>' : ""}`);
   const plan = r.validation_plan;
-  const research = r.research_directions.map((d) => {
-    const who = d.competitor ? ` <b>${esc(d.competitor)}</b>` : "";
-    const what = d.what_to_check ? ` &mdash; ${esc(d.what_to_check)}` : "";
-    return `${esc(d.question)}${who} <span class="small">(${esc(d.where_to_look)})</span>${what}`;
-  });
-
   const sources = round.sources && round.sources.length
     ? `<h4>Sources</h4><div class="sources">${round.sources
         .map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title || s.url)}</a>`)
         .join("<br>")}</div>`
-    : "";
-  const degraded = round.research_status !== "ok"
-    ? `<div class="degraded">Research was ${esc(round.research_status)} for this round, so any
-       claim without a source above is unverified.</div>`
     : "";
   const contradictions = r.contradictions.length
     ? `<h4>Contradictions in your answers</h4>${list(r.contradictions.map(esc))}`
     : "";
   const priorArt = r.prior_art.length
     ? `<h4>This already exists as</h4>${list(r.prior_art.map(esc))}`
-    : "";
-  const missing = r.missing_data.length
-    ? `<h4>Data neither of us has</h4>${list(r.missing_data.map(esc))}`
     : "";
 
   return `<div class="report">
@@ -154,10 +130,8 @@ function reportHtml(round) {
     <div><b>Talk to:</b> ${esc(plan.who_to_talk_to)}</div>
     <div><b>Pass:</b> ${esc(plan.pass_threshold)}</div>
     <div><b>Fail:</b> ${esc(plan.fail_threshold)}</div>
-    <h4>Research to do</h4>${list(research)}
     <h4>Kill criteria</h4>${list(r.kill_criteria.map(esc))}
-    ${contradictions}${priorArt}${missing}${sources}${degraded}
-    <div class="cost">${esc(round.usage ? round.usage.model : "")} &middot; ${money(round.cost_usd)}</div>
+    ${contradictions}${priorArt}${sources}
   </div>`;
 }
 
@@ -165,18 +139,11 @@ function render() {
   const transcript = $("transcript");
   transcript.innerHTML = "";
 
-  if (session.rounds.length === 0) {
-    transcript.appendChild(
-      turn(
-        "EVALUATOR",
-        "Describe your idea on the left and press START. I ask questions first. You get no verdict until you answer them.",
-        "bot evaluator"
-      )
-    );
-  }
-
   session.rounds.forEach((round) => {
-    (round.submission || []).forEach((message) => {
+    // Round 0 carries the idea, which is already in the pane on the left. Echoing it as
+    // the first thing the founder "said" only pushes the questions off the screen.
+    const submission = round.index === 0 ? [] : round.submission || [];
+    submission.forEach((message) => {
       if (message.text && message.text.trim()) {
         transcript.appendChild(turn("YOU", esc(message.text).replace(/\n/g, "<br>"), "user"));
       }
@@ -207,13 +174,8 @@ function render() {
 
   const started = session.rounds.length > 0;
   $("startBtn").disabled = busy || started;
-  $("reviseBtn").classList.toggle("hidden", !started);
   $("sendBtn").disabled = busy || !canAnswer(session);
-  $("verdictBtn").disabled = busy || !canAnswer(session);
   $("copyBtn").classList.toggle("hidden", !lastReport(session));
-  $("runStats").textContent = started
-    ? `${session.rounds.length} round(s) · ${money(session.totalCostUsd)} this session`
-    : " ";
   renderAttachments();
 }
 
@@ -326,11 +288,13 @@ async function start() {
   }
 }
 
-async function send(forVerdict) {
+async function send() {
   const text = $("answer").value.trim();
-  if (!text && !forVerdict) return;
+  if (!text) return;
   clearError();
-  lastAttempt = () => send(forVerdict);
+  // Editing the idea box is the act of revising it: no separate save step (FR-034).
+  session = reviseIdea(session, $("idea").value);
+  lastAttempt = () => send();
   const pending = session.attachments
     .filter((a) => !session.rounds.some((r) => (r.submission || []).some((m) => (m.attachment_ids || []).includes(a.id))))
     .map((a) => a.id);
@@ -398,9 +362,8 @@ function copyReport() {
   const report = lastReport(session);
   if (!report) return;
   const text = $("transcript").querySelector(".report").innerText;
-  navigator.clipboard.writeText(text).then(
-    () => ($("runStats").textContent = "Report copied to the clipboard."),
-    () => showError("Could not copy. Select the report and copy manually.", false)
+  navigator.clipboard.writeText(text).catch(() =>
+    showError("Could not copy. Select the report and copy manually.", false)
   );
 }
 
@@ -408,13 +371,6 @@ function copyReport() {
 async function init() {
   try {
     limits = await (await fetch("/api/limits")).json();
-    if (limits) {
-      $("attachHint").textContent =
-        `Spreadsheets, images, PDFs or text. Up to ${limits.max_attachments} files, ` +
-        `${Math.round(limits.max_attachment_bytes / (1024 * 1024))} MB each.`;
-      $("ideaHint").textContent =
-        `At least ${limits.min_idea_chars} characters. Two to four sentences beats one word.`;
-    }
   } catch {
     /* the page still works; the server will enforce the limits anyway */
   }
@@ -423,22 +379,13 @@ async function init() {
   if (session.idea) $("idea").value = session.idea;
 
   $("startBtn").onclick = start;
-  $("sendBtn").onclick = () => send(false);
-  $("verdictBtn").onclick = () => send(true);
-  $("sampleBtn").onclick = () => {
-    $("idea").value = SAMPLE;
-  };
+  $("sendBtn").onclick = () => send();
   $("clearBtn").onclick = clearSession;
   $("copyBtn").onclick = copyReport;
   $("retryBtn").onclick = () => lastAttempt && lastAttempt();
   $("fileInput").onchange = (event) => uploadFiles(event.target.files);
-  $("reviseBtn").onclick = async () => {
-    session = reviseIdea(session, $("idea").value);
-    await save();
-    render();
-  };
   $("answer").addEventListener("keydown", (event) => {
-    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) send(false);
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) send();
   });
 
   render();
