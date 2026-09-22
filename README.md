@@ -34,13 +34,20 @@ cp .env.example .env    # then set ANTHROPIC_API_KEY
 bie serve                       # http://127.0.0.1:8000
 bie ask "my idea..."            # round one from the terminal
 bie verdict --session s.json --answers "..."
-bie eval run                    # the graded eval suite (spends money)
+bie eval run                    # the graded eval suite — SPENDS MONEY, ask first
 ```
 
 ## Deploy
 
 Free on Vercel Hobby — see [DEPLOY.md](DEPLOY.md). Set `BIE_MAX_ATTACHMENT_MB=4` there,
 because Vercel caps request bodies at 4.5 MB.
+
+## The eval suite spends money
+
+`bie eval run` makes ~16 live calls. It is never run automatically: not in CI, not on a
+commit, not as a merge gate. Run it only when a change could alter model behaviour — the
+prompt, the schemas, the evaluator, the model or effort settings, or the graders — and only
+when the owner has asked for that run. See Principle III in `.specify/memory/constitution.md`.
 
 ## Develop
 

@@ -1,6 +1,7 @@
 <!--
 Sync Impact Report
-Version change: none (unversioned template) → 1.0.0 → 1.0.1 (PATCH: named the cost ceilings)
+Version change: none (unversioned template) → 1.0.0 → 1.0.1 (PATCH: named the cost
+  ceilings) → 1.1.0 (MINOR: eval runs require explicit per-run permission)
 Modified principles:
   [PRINCIPLE_1_NAME] → I. Test-First (NON-NEGOTIABLE)
   [PRINCIPLE_2_NAME] → II. Schema-Validated Model Output
@@ -64,9 +65,18 @@ enforced in code, not by convention: when a run would exceed the ceiling it MUST
 with a clear error rather than complete and bill.
 TODO(COST_CEILING): choose the ceiling value and the environment variable that carries it.
 
+The eval suite spends money on every case, so it MUST NOT be run without the owner's
+explicit permission for that run. Permission is per run and is never implied by a task
+list, a checklist item, a merge gate, or a previous approval. It MUST NOT run in CI, on a
+commit, on a push, or on a schedule. It SHOULD be run only when a change could alter model
+behaviour — the prompt, the schemas, the evaluator, the model or effort settings, or the
+graders themselves — and MUST NOT be run for changes that cannot, such as the web UI, the
+CLI's presentation, documentation, or test-only edits.
+
 Rationale: this is a tool whose core operation costs real money per invocation, and batch
 eval runs multiply that cost by the size of the dataset. A cap enforced in code is the
-only kind that survives a loop with a bug in it.
+only kind that survives a loop with a bug in it. The eval suite is the one thing here that
+spends without a person asking for an evaluation, which is exactly why asking is required.
 
 ### IV. Locked Stack, Minimal Surface
 
@@ -112,7 +122,8 @@ Feature work follows the Spec Kit flow: `/speckit-specify` to write the spec,
 design, `/speckit-tasks` for the ordered task list, and `/speckit-implement` to build it.
 Each feature is developed on its own branch. Before a branch merges: every task in
 `tasks.md` is complete or explicitly deferred in writing, `pytest` passes, `ruff` reports
-no errors, and the change is checked against each principle above. A change that violates
+no errors, and the change is checked against each principle above. The eval suite is not
+part of that gate: it runs only when the owner asks for it, per Principle III. A change that violates
 a principle MUST either be reworked or accompanied by an amendment to this constitution
 in the same branch — never merged as a silent exception.
 
@@ -134,4 +145,4 @@ Complexity that appears to violate Principle IV MUST be justified in the feature
 or removed. Unresolved `TODO(...)` markers in this document are open governance debt and
 SHOULD be closed before the feature that depends on them is planned.
 
-**Version**: 1.0.1 | **Ratified**: 2026-09-21 | **Last Amended**: 2026-09-21
+**Version**: 1.1.0 | **Ratified**: 2026-09-21 | **Last Amended**: 2026-09-22

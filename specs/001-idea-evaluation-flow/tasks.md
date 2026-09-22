@@ -184,7 +184,7 @@ rejected at selection with the limit named, leaving the rest of the submission i
 - [X] T076 Delete the dead retro scorer markup, CSS and JS left behind in web/ after T037–T039, and confirm no reference to `overall_score`, `dimensions` or `/api/evaluate` survives anywhere in the repository
 - [X] T077 Check the page at mobile width: panes stack idea-above-conversation, the conversation scrolls, and nothing overflows horizontally
 - [ ] T078 Run every scenario in specs/001-idea-evaluation-flow/quickstart.md against the running app, including the four failure paths, and fix what fails
-- [X] T079 Final gate before merge: `pytest` green, `ruff check .` clean, `python -m evals.run` at or above its threshold, and each of the five constitution principles checked against the diff
+- [X] T079 Final gate before merge: `pytest` green, `ruff check .` clean, and each constitution principle checked against the diff. The eval suite is NOT part of this gate — it costs money and runs only when the owner asks (constitution 1.1.0, Principle III)
 
 ---
 

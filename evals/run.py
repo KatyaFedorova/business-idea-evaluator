@@ -7,6 +7,7 @@ by the application; it exists to prove the prompt still behaves.
 from __future__ import annotations
 
 import json
+import os
 import sys
 from dataclasses import replace
 from pathlib import Path
@@ -131,6 +132,17 @@ def main(
     if not settings.has_api_key:
         print("No ANTHROPIC_API_KEY set; the eval suite needs one.", file=sys.stderr)
         return 1
+
+    # Principle III: this suite spends real money, so it must not run unattended.
+    # CI sets CI=true; a human at a terminal does not.
+    if os.getenv("CI") and not os.getenv("BIE_EVAL_CONFIRMED"):
+        print(
+            "Refusing to run the eval suite in CI: it spends real money and needs the "
+            "owner's permission for each run (constitution, Principle III). Set "
+            "BIE_EVAL_CONFIRMED=1 to override deliberately.",
+            file=sys.stderr,
+        )
+        return 2
 
     client = build_client()
     cases = load_cases(Path(cases_dir) if cases_dir else CASES_DIR)
