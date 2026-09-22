@@ -23,21 +23,6 @@
   </span></div>
 
   <div id="main">
-    <fieldset>
-      <legend>About This Site</legend>
-      <p style="font-size:14px;margin:0">
-        This page runs one versioned prompt against the Claude API. It asks you the questions whose
-        answers would most change its verdict, researches the market, and returns a
-        schema-validated report: a verdict, the reasons for and against, the riskiest assumption,
-        a two-week no-code validation plan, named competitors and kill criteria. No scores.
-      </p>
-      <p class="small" style="margin:8px 0 0">
-        Every round shows what it cost. Run <code>bie eval run</code> locally to reproduce the
-        prompt's scoreboard.
-      </p>
-    </fieldset>
-
-
     <div id="panes">
 
       <!-- ---------------------------- idea pane ---------------------------- -->
@@ -52,10 +37,10 @@
             <ul id="attachList"></ul>
           </div>
 
-          <div class="row">
-            <div><button id="startBtn" type="button">START</button></div>
-            <div><button id="reviseBtn" type="button" class="hidden">Save idea edit</button></div>
-            <div><button id="clearBtn" type="button">Clear session</button></div>
+          <div class="row row-inline">
+            <button id="startBtn" type="button">START</button>
+            <button id="reviseBtn" type="button" class="hidden">Save idea edit</button>
+            <button id="clearBtn" type="button">Clear session</button>
           </div>
         </fieldset>
       </div>

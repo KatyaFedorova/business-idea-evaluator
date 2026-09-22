@@ -143,6 +143,9 @@ button[disabled] { color: #808080; cursor: default; }
 
 .row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
 .row > div { flex: 1 1 140px; }
+/* Buttons that belong on one line: no wrapping, no stretching. */
+.row-inline { flex-wrap: nowrap; align-items: center; }
+.row-inline > button { flex: 0 0 auto; }
 
 .waiting { font-family: Verdana, sans-serif; font-size: 13px; color: var(--navy); padding: 4px 0; }
 
