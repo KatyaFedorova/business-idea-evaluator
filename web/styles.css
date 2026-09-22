@@ -273,7 +273,6 @@ hr.fancy {
 .report .guess { color: #555; font-style: italic; }
 .sources { font-size: 11px; }
 .sources a { word-break: break-all; }
-.degraded { background: #ffffcc; border: 1px solid #999900; padding: 4px; margin-top: 8px; }
 
 @media (max-width: 820px) {
   #panes { display: block; }

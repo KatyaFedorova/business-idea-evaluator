@@ -118,10 +118,6 @@ function reportHtml(round) {
         .map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title || s.url)}</a>`)
         .join("<br>")}</div>`
     : "";
-  const degraded = round.research_status !== "ok"
-    ? `<div class="degraded">Research was ${esc(round.research_status)} for this round, so any
-       claim without a source above is unverified.</div>`
-    : "";
   const contradictions = r.contradictions.length
     ? `<h4>Contradictions in your answers</h4>${list(r.contradictions.map(esc))}`
     : "";
@@ -145,7 +141,7 @@ function reportHtml(round) {
     <div><b>Fail:</b> ${esc(plan.fail_threshold)}</div>
     <h4>Research to do</h4>${list(research)}
     <h4>Kill criteria</h4>${list(r.kill_criteria.map(esc))}
-    ${contradictions}${priorArt}${missing}${sources}${degraded}
+    ${contradictions}${priorArt}${missing}${sources}
   </div>`;
 }
 

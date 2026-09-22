@@ -212,8 +212,10 @@ verdict refers to specific content from those files.
 - **FR-015**: The verdict report MUST make its sources inspectable to the visitor, so a
   named competitor or a cited figure can be traced back to where it came from.
 - **FR-016**: When research is unavailable, returns nothing usable, or is cut short by the
-  cost ceiling, the system MUST still produce a verdict, MUST label every affected claim as
-  unverified, and MUST tell the visitor that the research step was degraded.
+  cost ceiling, the system MUST still produce a verdict and MUST label every affected claim
+  as a guess within the report itself. The research status MUST be recorded in the API
+  response, but MUST NOT be announced as a banner on the page: with research switched off
+  by configuration it would appear on every verdict and mean nothing.
 - **FR-017**: Research MUST be bounded so that a single round stays within the
   per-evaluation cost ceiling and within a reasonable wait, and content retrieved during
   research MUST be treated as material to be weighed, never as instructions (see FR-028).
@@ -313,7 +315,7 @@ verdict refers to specific content from those files.
 - **SC-013**: At least 90% of competitors named in a verdict report are real, currently
   operating, and traceable to a source retrieved during that round.
 - **SC-014**: When research fails or returns nothing usable, 100% of reports still deliver
-  a verdict and mark the affected claims as unverified.
+  a verdict and mark the affected claims as guesses inside the report.
 - **SC-012**: Encouragement padding and hedging are absent from verdict reports in at least
   95% of eval cases scored for tone.
 
