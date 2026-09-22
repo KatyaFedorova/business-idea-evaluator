@@ -129,7 +129,7 @@ def test_validation_plan_must_fit_two_weeks_and_need_no_code():
         ValidationPlan.model_validate({**base, "steps": []})
 
 
-def test_research_directions_and_kill_criteria_are_bounded(valid_verdict):
+def test_kill_criteria_are_bounded(valid_verdict):
     valid_verdict["kill_criteria"] = []
     with pytest.raises(ValidationError):
         VerdictReport.model_validate(valid_verdict)
@@ -138,7 +138,7 @@ def test_research_directions_and_kill_criteria_are_bounded(valid_verdict):
 def test_guesses_are_labelled(valid_verdict):
     report = VerdictReport.model_validate(valid_verdict)
     assert report.fails_because[2].is_guess is True
-    assert report.missing_data == ["Retention curves for screen-time apps"]
+    assert report.prior_art == ["Opal", "one sec"]
 
 
 def test_report_is_rejected_when_it_runs_long(valid_verdict):

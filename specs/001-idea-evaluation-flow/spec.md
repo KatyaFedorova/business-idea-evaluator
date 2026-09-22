@@ -181,22 +181,25 @@ verdict refers to specific content from those files.
   distribution channel, and how the founder would know within 30 days that they are wrong.
 - **FR-005**: Visitors MUST be able to answer the questions on the page and submit those
   answers to obtain a verdict.
-- **FR-006**: When answers are vague, the system MUST say so and re-ask rather than
-  filling the gap with an assumption and proceeding to a verdict.
+- **FR-006**: When answers are vague, the system MUST be able to say so and re-ask rather
+  than filling the gap with an assumption. The number of re-asks allowed in a session is
+  configurable and MAY be zero, in which case the evaluator MUST still deliver a verdict
+  and say in its confidence line what remained unknown. Each re-ask is a full round at full
+  cost, which is why the limit exists.
 - **FR-007**: The verdict report MUST open with exactly one of PROCEED, PROCEED ONLY AFTER
   TESTING X, or DON'T PROCEED as its first line, without hedging.
 - **FR-008**: The verdict report MUST contain, in order: the verdict line; confidence
   (low/medium/high) with what would move it; three strongest reasons it works; three most
   likely reasons it fails, ranked by how likely they are to kill it; the single riskiest
   assumption; a validation plan testing that assumption in under two weeks with no code,
-  giving at most four steps, who to talk to, and a numeric pass and fail threshold; at most
-  three research questions with named competitors and what to check about them; and at most
-  three kill criteria.
+  giving at most four steps, who to talk to, and a numeric pass and fail threshold; and at
+  most three kill criteria. Anything the founder would need to look up belongs in the
+  validation plan; the report carries no separate research section.
 - **FR-009**: The verdict report MUST separate what the evaluator knows from what it is
   guessing, with guesses explicitly labelled.
 - **FR-010**: The verdict report MUST name the existing product when the idea is a worse
-  version of something that already exists, and MUST name the specific data and how to get
-  it when it would need data neither party has.
+  version of something that already exists. Data neither party has belongs in the validation
+  plan as something to go and find, not in a list of its own.
 - **FR-011**: The verdict report MUST point at contradictions between the founder's own
   answers rather than resolving them silently.
 - **FR-012**: The verdict report MUST lead with the problem, contain no encouragement

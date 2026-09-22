@@ -121,13 +121,6 @@ class ValidationPlan(BaseModel):
         return self
 
 
-class ResearchDirection(BaseModel):
-    question: str = Field(min_length=1, max_length=150)
-    where_to_look: str = Field(min_length=1, max_length=120)
-    competitor: str | None = Field(default=None, max_length=80)
-    what_to_check: str | None = Field(default=None, max_length=120)
-
-
 class VerdictReport(BaseModel):
     """Step 2: the verdict, exactly as the owner's prompt specifies it."""
 
@@ -145,13 +138,15 @@ class VerdictReport(BaseModel):
     fails_because: list[FailureMode] = Field(min_length=3, max_length=3)
     riskiest_assumption: str = Field(min_length=1, max_length=200)
     validation_plan: ValidationPlan
-    research_directions: list[ResearchDirection] = Field(min_length=1, max_length=3)
     kill_criteria: list[Annotated[str, StringConstraints(min_length=1, max_length=120)]] = Field(
         min_length=1, max_length=3
     )
     contradictions: list[str] = Field(default_factory=list, max_length=3)
-    prior_art: list[str] = Field(default_factory=list, max_length=3)
-    missing_data: list[str] = Field(default_factory=list, max_length=3)
+    prior_art: list[Annotated[str, StringConstraints(min_length=1, max_length=80)]] = Field(
+        default_factory=list,
+        max_length=3,
+        description="Existing products this is a worse version of. Names only.",
+    )
 
     @model_validator(mode="after")
     def _condition_matches_verdict(self) -> VerdictReport:

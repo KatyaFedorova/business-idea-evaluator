@@ -85,9 +85,7 @@ def guesses_are_labelled(round_: Round) -> GradeResult:
 def names_prior_art(round_: Round) -> GradeResult:
     """FR-010: if it already exists, say the name."""
     report = round_.report
-    named = bool(report and (report.prior_art or any(
-        d.competitor for d in report.research_directions
-    )))
+    named = bool(report and report.prior_art)
     return _ok("names_prior_art", named, "no existing product named")
 
 
@@ -131,9 +129,7 @@ def degraded_research_is_declared(round_: Round) -> GradeResult:
         return _ok("degraded_research_is_declared", False, "no verdict at all")
     if round_.research_status == "ok":
         return _ok("degraded_research_is_declared", True, "research was fine")
-    labelled = any(f.is_guess for f in round_.report.fails_because) or bool(
-        round_.report.missing_data
-    )
+    labelled = any(f.is_guess for f in round_.report.fails_because)
     return _ok("degraded_research_is_declared", labelled, "nothing marked unverified")
 
 

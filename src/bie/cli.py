@@ -107,10 +107,10 @@ def _print_report(round_: Round) -> None:
         console.print(f"  · {step}")
     console.print(f"  Pass: {plan.pass_threshold}")
     console.print(f"  Fail: {plan.fail_threshold}")
-    console.print("\n[bold]Research[/bold]")
-    for direction in report.research_directions:
-        who = f" ({direction.competitor})" if direction.competitor else ""
-        console.print(f"  · {direction.question}{who} — {direction.where_to_look}")
+    if report.prior_art:
+        console.print("\n[bold]This already exists as[/bold]")
+        for name in report.prior_art:
+            console.print(f"  · {name}")
     console.print("\n[bold]Kill criteria[/bold]")
     for item in report.kill_criteria:
         console.print(f"  · {item}")

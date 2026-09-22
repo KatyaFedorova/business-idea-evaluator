@@ -61,7 +61,6 @@ def test_forced_verdict_is_caught(valid_verdict):
 def test_degraded_research_must_be_declared(valid_verdict):
     round_ = verdict_round(valid_verdict, research_status="unavailable", sources=[])
     assert graders.degraded_research_is_declared(round_).passed
-    valid_verdict["missing_data"] = []
     for failure in valid_verdict["fails_because"]:
         failure["is_guess"] = False
     bare = verdict_round(valid_verdict, research_status="unavailable", sources=[])

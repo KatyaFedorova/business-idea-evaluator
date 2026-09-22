@@ -107,12 +107,6 @@ function reportHtml(round) {
     .sort((a, b) => a.rank - b.rank)
     .map((f) => `${esc(f.text)}${f.is_guess ? ' <span class="guess">(guess)</span>' : ""}`);
   const plan = r.validation_plan;
-  const research = r.research_directions.map((d) => {
-    const who = d.competitor ? ` <b>${esc(d.competitor)}</b>` : "";
-    const what = d.what_to_check ? ` &mdash; ${esc(d.what_to_check)}` : "";
-    return `${esc(d.question)}${who} <span class="small">(${esc(d.where_to_look)})</span>${what}`;
-  });
-
   const sources = round.sources && round.sources.length
     ? `<h4>Sources</h4><div class="sources">${round.sources
         .map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title || s.url)}</a>`)
@@ -123,9 +117,6 @@ function reportHtml(round) {
     : "";
   const priorArt = r.prior_art.length
     ? `<h4>This already exists as</h4>${list(r.prior_art.map(esc))}`
-    : "";
-  const missing = r.missing_data.length
-    ? `<h4>Data neither of us has</h4>${list(r.missing_data.map(esc))}`
     : "";
 
   return `<div class="report">
@@ -139,9 +130,8 @@ function reportHtml(round) {
     <div><b>Talk to:</b> ${esc(plan.who_to_talk_to)}</div>
     <div><b>Pass:</b> ${esc(plan.pass_threshold)}</div>
     <div><b>Fail:</b> ${esc(plan.fail_threshold)}</div>
-    <h4>Research to do</h4>${list(research)}
     <h4>Kill criteria</h4>${list(r.kill_criteria.map(esc))}
-    ${contradictions}${priorArt}${missing}${sources}
+    ${contradictions}${priorArt}${sources}
   </div>`;
 }
 

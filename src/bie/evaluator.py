@@ -38,7 +38,9 @@ STEP_TWO = (
     "contradiction between the founder's own answers. LENGTH: the whole report must read as "
     "bullets and stay under 300 words. One line per reason, per step, per criterion — no "
     "sentence over 20 words, no preamble, no restating the idea back. Cut rather than run "
-    "long; the schema will reject anything that does not fit."
+    "long; the schema will reject anything that does not fit. The report has no field for "
+    "research directions or missing data: name existing products in prior_art and put "
+    "anything you would need to check into the validation plan instead."
 )
 NO_RESEARCH_NOTE = (
     " Research is switched off for this run, so you have no sources: mark every market "
