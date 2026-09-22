@@ -73,10 +73,6 @@ function esc(value) {
   return d.innerHTML;
 }
 
-function money(value) {
-  return `$${Number(value || 0).toFixed(4)}`;
-}
-
 function turn(who, bodyHtml, extraClass = "") {
   const wrap = document.createElement("div");
   wrap.className = `msg ${extraClass}`.trim();
@@ -91,8 +87,7 @@ function questionsHtml(round) {
   const items = round.questions.questions
     .map((q) => `<li>${esc(q.text)}</li>`)
     .join("");
-  return `${note}<ol class="qlist">${items}</ol>
-    <div class="cost">${esc(round.usage ? round.usage.model : "")} &middot; ${money(round.cost_usd)}</div>`;
+  return `${note}<ol class="qlist">${items}</ol>`;
 }
 
 function verdictLine(report) {
@@ -151,7 +146,6 @@ function reportHtml(round) {
     <h4>Research to do</h4>${list(research)}
     <h4>Kill criteria</h4>${list(r.kill_criteria.map(esc))}
     ${contradictions}${priorArt}${missing}${sources}${degraded}
-    <div class="cost">${esc(round.usage ? round.usage.model : "")} &middot; ${money(round.cost_usd)}</div>
   </div>`;
 }
 
@@ -160,7 +154,10 @@ function render() {
   transcript.innerHTML = "";
 
   session.rounds.forEach((round) => {
-    (round.submission || []).forEach((message) => {
+    // Round 0 carries the idea, which is already in the pane on the left. Echoing it as
+    // the first thing the founder "said" only pushes the questions off the screen.
+    const submission = round.index === 0 ? [] : round.submission || [];
+    submission.forEach((message) => {
       if (message.text && message.text.trim()) {
         transcript.appendChild(turn("YOU", esc(message.text).replace(/\n/g, "<br>"), "user"));
       }
@@ -191,13 +188,8 @@ function render() {
 
   const started = session.rounds.length > 0;
   $("startBtn").disabled = busy || started;
-  $("reviseBtn").classList.toggle("hidden", !started);
   $("sendBtn").disabled = busy || !canAnswer(session);
-  $("verdictBtn").disabled = busy || !canAnswer(session);
   $("copyBtn").classList.toggle("hidden", !lastReport(session));
-  $("runStats").textContent = started
-    ? `${session.rounds.length} round(s) · ${money(session.totalCostUsd)} this session`
-    : " ";
   renderAttachments();
 }
 
@@ -310,11 +302,13 @@ async function start() {
   }
 }
 
-async function send(forVerdict) {
+async function send() {
   const text = $("answer").value.trim();
-  if (!text && !forVerdict) return;
+  if (!text) return;
   clearError();
-  lastAttempt = () => send(forVerdict);
+  // Editing the idea box is the act of revising it: no separate save step (FR-034).
+  session = reviseIdea(session, $("idea").value);
+  lastAttempt = () => send();
   const pending = session.attachments
     .filter((a) => !session.rounds.some((r) => (r.submission || []).some((m) => (m.attachment_ids || []).includes(a.id))))
     .map((a) => a.id);
@@ -382,9 +376,8 @@ function copyReport() {
   const report = lastReport(session);
   if (!report) return;
   const text = $("transcript").querySelector(".report").innerText;
-  navigator.clipboard.writeText(text).then(
-    () => ($("runStats").textContent = "Report copied to the clipboard."),
-    () => showError("Could not copy. Select the report and copy manually.", false)
+  navigator.clipboard.writeText(text).catch(() =>
+    showError("Could not copy. Select the report and copy manually.", false)
   );
 }
 
@@ -400,19 +393,13 @@ async function init() {
   if (session.idea) $("idea").value = session.idea;
 
   $("startBtn").onclick = start;
-  $("sendBtn").onclick = () => send(false);
-  $("verdictBtn").onclick = () => send(true);
+  $("sendBtn").onclick = () => send();
   $("clearBtn").onclick = clearSession;
   $("copyBtn").onclick = copyReport;
   $("retryBtn").onclick = () => lastAttempt && lastAttempt();
   $("fileInput").onchange = (event) => uploadFiles(event.target.files);
-  $("reviseBtn").onclick = async () => {
-    session = reviseIdea(session, $("idea").value);
-    await save();
-    render();
-  };
   $("answer").addEventListener("keydown", (event) => {
-    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) send(false);
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) send();
   });
 
   render();

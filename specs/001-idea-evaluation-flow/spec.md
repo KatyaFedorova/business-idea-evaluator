@@ -59,8 +59,9 @@ next turn with every named section present and the verdict line first.
 5. **Given** any submission, **When** the analysis fails or the reply is missing a
    required section, **Then** the founder sees a clear failure with a retry option and is
    never shown a partial or invented report.
-6. **Given** a completed round, **When** the founder looks at the result, **Then** the
-   cost of that round is visible to them.
+6. **Given** a completed round, **When** the owner inspects the API response or the CLI
+   output, **Then** the cost of that round is recorded there. The page does not show it:
+   the founder is reading a verdict, not an invoice.
 
 ---
 
@@ -219,9 +220,11 @@ verdict refers to specific content from those files.
 - **FR-019**: The system MUST show a visible in-progress state from submission until the
   reply or an error arrives, and MUST prevent duplicate concurrent submissions within one
   session.
-- **FR-020**: The system MUST display the cost of each round to the visitor, and MUST
-  refuse to start a round whose projected cost exceeds the project's per-evaluation
-  ceiling, explaining why.
+- **FR-020**: The system MUST record the cost of each round in its API response and CLI
+  output, and MUST refuse to start a round whose projected cost exceeds the project's
+  per-round, per-session or per-day ceiling, explaining why. The cost MUST NOT be shown on
+  the page: it is operator information, not something the founder needs while reading a
+  verdict.
 - **FR-021**: Every round MUST take the original description plus all questions, answers,
   added detail, and attachments from earlier rounds into account.
 - **FR-022**: The system MUST keep every round of a session readable and in order, and
@@ -253,9 +256,10 @@ verdict refers to specific content from those files.
 - **FR-033**: Founders MUST be able to answer in as many messages as they choose rather
   than being forced into one combined form, and MUST be able to attach files to any
   message.
-- **FR-034**: When the founder revises the idea box after the conversation has started,
-  the revised idea MUST be what the next round evaluates, and the revision MUST be visible
-  in the conversation so the transcript never silently disagrees with the idea box.
+- **FR-034**: When the founder edits the idea box after the conversation has started, the
+  edited idea MUST be what the next round evaluates, and the change MUST be recorded in the
+  conversation so the transcript never silently disagrees with the idea box. No separate
+  save step is required: editing the box is the act of revising the idea.
 - **FR-035**: The interface MUST NOT present numeric scores, ratings, or percentage
   judgements of the idea anywhere; the verdict line and confidence level are the only
   summary judgements shown.
@@ -298,7 +302,8 @@ verdict refers to specific content from those files.
   cases on a supported browser.
 - **SC-009**: Verdicts produced with attachments refer to the attached material in at least
   90% of cases where it is relevant.
-- **SC-010**: Every round's cost is visible, and no round exceeds the per-evaluation ceiling.
+- **SC-010**: Every round's cost is recorded in the response, and no round exceeds the
+  per-round, per-session or per-day ceiling.
 - **SC-011**: Attempts to steer the evaluator through instructions embedded in the idea
   text, answers, attachments, or retrieved pages do not change the verdict, verified by
   dedicated eval cases.

@@ -101,3 +101,23 @@ def test_a_round_is_refused_once_the_day_is_spent(fake_anthropic, valid_question
     assert "tomorrow" in response.json()["error"]["message"]
     assert fake.messages.calls[-1].get("messages") is None or "output_format" not in fake.messages.calls[-1]
     daily_spend.reset()
+
+
+def test_error_detail_is_logged_even_though_it_is_not_returned(caplog):
+    """The envelope hides internal detail from the founder; it must still reach the log,
+    or a production failure leaves nothing to diagnose."""
+    import logging
+
+    app = create_app(mount_static=False)
+
+    @app.get("/boom")
+    def boom():
+        raise UpstreamError("We could not reach the evaluator.", detail="why it really broke")
+
+    with caplog.at_level(logging.WARNING, logger="bie"):
+        response = TestClient(app, raise_server_exceptions=False).get("/boom")
+
+    assert response.status_code == 502
+    assert "why it really broke" not in response.text
+    assert "why it really broke" in caplog.text
+    assert "upstream_error" in caplog.text
