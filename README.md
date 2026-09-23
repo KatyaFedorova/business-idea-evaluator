@@ -1,96 +1,138 @@
 # Business Idea Evaluator
 
-A skeptical early-stage investor in a web page. You describe a business idea; it asks you the
-questions whose answers would most change its verdict, and only once you have answered does it
-tell you **PROCEED**, **PROCEED ONLY AFTER TESTING X**, or **DON'T PROCEED** — with the three
-strongest reasons it works, the three most likely ways it dies, the riskiest assumption, a
-two-week no-code validation plan with explicit pass and fail numbers, named competitors it
-actually looked up, and kill criteria.
+A skeptical early-stage investor in a web page, and a graded LLM eval pipeline that proves it behaves.
 
-No scores. No pep talk. Around 600 words.
+You describe a business idea. It asks the questions whose answers would most change its verdict, researches the market with live web search, and only then decides: **PROCEED**, **PROCEED ONLY AFTER TESTING X**, or **DON'T PROCEED**. The verdict comes with the three strongest reasons it works, the three most likely ways it dies, the riskiest assumption, a two-week no-code validation plan with pass/fail numbers, real named competitors, and kill criteria.
 
-## How it works
+No scores. No pep talk. About 600 words.
 
-Two panes: your idea on the left, the conversation on the right. Round one is questions only —
-a reply that contains a verdict fails schema validation and never reaches you. You answer in as
-many messages as you like, attaching evidence if you have it. Round two researches the market
-with live web search, then returns the verdict. If your answers are vague, it says so and asks
-again rather than inventing a customer for you.
+## At a glance
 
-The server stores nothing. Your session lives in your browser (IndexedDB) and survives a reload;
-clearing it deletes the files it uploaded.
+| | |
+|---|---|
+| Cost of one production evaluation | $1.30 |
+| Cost of the full eval suite | $0.48 |
+| Unit tests | 111 |
+| Contract tests | 40 |
+| Live integration tests | 3 |
+| Graded eval cases | 8 |
+| Method | Spec-driven development (GitHub Spec Kit) + strict TDD |
+| Stack | Python 3.11+, FastAPI, Pydantic v2, Typer, Anthropic SDK, plain HTML/CSS/JS, Vercel |
 
-## Setup
+## What this project demonstrates
+
+- **LLM evaluation engineering.** Eight graded cases check behavior, not just format. Structural graders are paired with an LLM-as-judge for what structure can't see.
+- **Cost as a first-class requirement.** Every call is priced, every round reports its cost, and three spending ceilings are enforced before the API call, not reconciled after it.
+- **A disciplined test strategy.** The testing pyramid is respected: a fast, free, offline base, and paid live tests only at the top.
+- **Spec-driven, agent-assisted delivery.** The whole feature was specified, planned, broken into tasks and implemented through GitHub Spec Kit with AI coding agents, governed by a written project constitution.
+- **Safe handling of model output.** Every response is parsed into a Pydantic schema before any code touches it. Invalid output is a typed error, never silently patched.
+
+## Two kinds of tests
+
+### 1. Software tests: the testing pyramid
+
+```
+            /\
+           /  \        3 live integration tests
+          /----\       real API, opt-in only (pytest -m live)
+         /      \
+        /--------\     40 contract tests
+       /          \    HTTP API, CLI and session-store contracts
+      /------------\
+     /              \  111 unit tests
+    /----------------\ schemas, evaluator, budget, pricing, attachments, graders
+```
+
+`pytest` runs the unit and contract layers with no API key, no network and no spend, so the default suite is free and fast. Tests that cost money are marked `live` and never run by accident.
+
+### 2. AI evaluation: graded eval suite
+
+Each case runs the real flow and is scored by deterministic graders plus an LLM judge on a cheaper model:
+
+| Eval case | What it proves |
+|---|---|
+| No verdict in step one | Round one only asks questions and never judges early |
+| Verdict has every section | Report leads with the verdict and includes every required section |
+| Vague answers are sent back | Asks again rather than inventing a customer for the founder |
+| Contradictions are named | Catches the founder contradicting their own answers |
+| Attachment grounding | The verdict uses the numbers from an attached spreadsheet |
+| Degraded research | Still delivers a verdict when web research is thin, and says so |
+| Injection resistance | An instruction hidden in the idea text doesn't change the verdict |
+| No pep talk, no padding | Tone stays blunt and within the word limit |
+
+## Cost engineering
+
+| Run | Cost |
+|---|---|
+| One production evaluation (questions + researched verdict) | $1.30 |
+| Full eval suite, 8 cases | $0.48 |
+
+How the cost stays predictable:
+
+- **Priced per call.** Input, output, cache and web-search costs are computed in `pricing.py` for every request.
+- **Ceilings enforced up front.** A token-count projection runs before each call. Limits: $1.50 per round, $5.00 per session and a daily site-wide brake, all configurable.
+- **Cheap evals by design.** The eval suite runs on a smaller model with fewer searches, so a full run costs about a third of one production evaluation. `--production` switches to real settings for pre-release checks.
+- **No paying twice for a failure.** `BIE_RECORD` saves a live reply and `BIE_REPLAY` replays it with zero API calls, so debugging is free.
+- **Failed calls still count.** Replies that fail validation are billed by Anthropic, so they go on the spend ledger too.
+- **Evals never run automatically.** Not in CI, not on commit. They run only when a change could alter model behavior.
+
+## How it was built: Spec Kit + TDD
+
+The project follows a written constitution with five principles:
+
+1. **Test-first (non-negotiable).** Red → green → refactor. Code without a preceding failing test is redone.
+2. **Schema-validated model output.** Nothing downstream reads unvalidated model text.
+3. **Cost is measured and capped.** In code, before the spend.
+4. **Locked stack, minimal surface.** No database, no auth layer, no frontend framework without amending the constitution.
+5. **Configuration over hardcoding.** Every model ID, limit and ceiling comes from `Settings`.
+
+Feature delivery ran through the Spec Kit pipeline with AI coding agents:
+
+```
+specify → clarify → plan → tasks → implement
+```
+
+The full artifact trail is in `specs/001-idea-evaluation-flow/`: spec, research, data model, API and CLI contracts, plan, and task list.
+
+## Features
+
+- Two-step interrogation: questions first; a verdict in round one fails schema validation and never reaches the user
+- Live market research through web search, capped per round
+- Attachments: images, PDFs, XLSX/CSV and text as evidence
+- Privacy by design: the server stores nothing; the session lives in the browser (IndexedDB)
+- Same core, two interfaces: web app (FastAPI) and CLI (Typer) share one code path, so they can't drift apart
+- Versioned prompts selected by config
+
+## Quick start
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-cp .env.example .env    # then set ANTHROPIC_API_KEY
-```
+cp .env.example .env          # set ANTHROPIC_API_KEY
 
-## Run
+bie serve                     # web app at http://127.0.0.1:8000
+bie ask "my idea..."          # round one from the terminal
 
-```bash
-bie serve                       # http://127.0.0.1:8000
-bie ask "my idea..."            # round one from the terminal
-bie verdict --session s.json --answers "..."
-bie eval run                    # the graded eval suite — SPENDS MONEY, ask first
-```
+pytest                        # unit + contract: free, offline
+pytest -m live                # live integration tests (costs money)
+bie eval run                  # graded eval suite (costs money)
 
-## Deploy
-
-Free on Vercel Hobby — see [DEPLOY.md](DEPLOY.md). Set `BIE_MAX_ATTACHMENT_MB=4` there,
-because Vercel caps request bodies at 4.5 MB.
-
-## The eval suite spends money
-
-`bie eval run` makes ~16 live calls. It is never run automatically: not in CI, not on a
-commit, not as a merge gate. Run it only when a change could alter model behaviour — the
-prompt, the schemas, the evaluator, the model or effort settings, or the graders — and only
-when the owner has asked for that run. See Principle III in `.specify/memory/constitution.md`.
-
-## Debugging a failure without paying for it twice
-
-```bash
-BIE_RECORD=1 bie ask "..."            # writes the reply to tests/fixtures/
-BIE_REPLAY=tests/fixtures/reply-*.json bie ask "..."   # no API call at all
-```
-
-Every call is charged to the day's ledger the moment it returns, including calls whose reply
-fails validation — those are billed by Anthropic too, and pretending otherwise understated
-the spend. The ledger lives in `~/.bie/spend.json` so it survives between runs.
-
-## Develop
-
-```bash
-pytest                  # unit + contract tests: no API key, no network, no spend
-pytest -m live          # integration tests against the real API (spends money)
 ruff check .
 ```
 
-## What it costs
+Deployment on Vercel's free tier is covered in `DEPLOY.md`.
 
-Every round reports its own cost, and the session total is on screen. Two ceilings are enforced
-in code before a call is made, not reconciled afterwards: **$1.50 per round** and **$5.00 per
-session** (`BIE_MAX_COST_PER_ROUND_USD`, `BIE_MAX_COST_PER_SESSION_USD`). Live web search is
-billed at $10 per 1,000 searches on top of tokens, and is capped per round by `BIE_MAX_SEARCHES`.
-
-## Attachments
-
-Images, PDFs, spreadsheets (XLSX, CSV) and text, up to 5 files of 10 MB each. Spreadsheets are
-converted to text here; images and PDFs are uploaded to the Anthropic Files API and referenced by
-id, so the bytes cross the wire once however many rounds follow. **Those files stay with Anthropic
-for the life of the session** and are deleted when you clear it.
-
-## Layout
+## Project layout
 
 ```
-src/bie/        schemas, prompt, evaluator, budget, attachments, FastAPI app, Typer CLI
-web/            the page: two panes, 90s chrome, no build step, no framework
-evals/          graded cases, structural graders, an LLM judge, the runner
-tests/          unit, contract, and live integration tests
-specs/          the specification, plan and tasks this was built from
+src/bie/     schemas, prompt, evaluator, budget, pricing, attachments, API, CLI
+web/         static two-pane UI, no build step, no framework
+evals/       8 graded cases, structural graders, LLM judge, runner
+tests/       unit / contract / live integration
+specs/       spec, plan, contracts and tasks this was built from
+.specify/    Spec Kit config and the project constitution
 ```
 
-Configuration lives in `.env` and is read in exactly one place, `src/bie/config.py`. The prompt
-lives in `src/bie/prompts/` and is versioned; `BIE_PROMPT_VERSION` selects it.
+## Author
+
+Katya Fedorova, software engineer
