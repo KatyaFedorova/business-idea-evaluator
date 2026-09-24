@@ -11,3 +11,4 @@ site/
 .DS_Store
 sessions/
 .vercel
+evals/.cache/

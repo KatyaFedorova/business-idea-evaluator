@@ -18,6 +18,7 @@ from bie.config import Settings
 from bie.errors import IdeaTooShort
 from bie.schemas import (
     Attachment,
+    FinalDecision,
     FounderMessage,
     QuestionSet,
     Round,
@@ -213,7 +214,8 @@ def evaluate(
     check_daily(projected, settings)
 
     reasks = sum(1 for r in rounds if r.kind == "reask")
-    instruction = STEP_TWO + (STEP_TWO_FINAL if reasks >= settings.max_reasks else "")
+    final = reasks >= settings.max_reasks
+    instruction = STEP_TWO + (STEP_TWO_FINAL if final else "")
     if not settings.research_enabled:
         instruction += NO_RESEARCH_NOTE
 
@@ -222,7 +224,7 @@ def evaluate(
         system=system,
         instruction=instruction,
         messages=messages,
-        schema=RoundDecision,
+        schema=FinalDecision if final else RoundDecision,
         effort=settings.verdict_effort,
         settings=settings,
         research=settings.research_enabled,

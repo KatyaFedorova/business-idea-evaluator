@@ -21,7 +21,8 @@ from bie.config import Settings
 from bie.errors import BieError
 from bie.evaluator import ask_questions, evaluate
 from bie.schemas import FounderMessage, Round
-from evals import graders
+from evals import baseline, cache, graders
+from evals.rubric import RubricResult, load_rubric, score_round
 
 CASES_DIR = Path(__file__).parent / "cases"
 
@@ -58,7 +59,37 @@ def _case_attachments(case: dict, client: Any, settings: Settings) -> list:
     return prepare_files(paths, client=client, settings=settings) if paths else []
 
 
-def _run_case(case: dict, settings: Settings, client: Any) -> tuple[Round, float]:
+def case_settings(case: dict, settings: Settings, production: bool) -> Settings:
+    """A case may ask for fewer searches when none of its graders look at research.
+
+    Ignored under --production: the gate that ships a prompt runs it as founders will.
+    """
+    if production or "max_searches" not in case:
+        return settings
+    return replace(settings, max_searches=int(case["max_searches"]))
+
+
+def _round_one(
+    case: dict, attachments: list, settings: Settings, client: Any, fresh: bool
+) -> Round:
+    """Round one, from disk when a verdict case only needs it as a stepping stone.
+
+    The questions case always runs it live: round one is what it grades. Cases with
+    attachments do too, because the cached round would carry stale attachment ids.
+    """
+    reusable = case.get("phase", "verdict") != "questions" and not attachments
+    key = cache.round_one_key(case["idea"], settings)
+    if reusable and not fresh and (cached := cache.load_round_one(key)) is not None:
+        return cached.model_copy(update={"cost_usd": 0.0})
+    first = ask_questions(case["idea"], attachments=attachments, settings=settings, client=client)
+    if reusable:
+        cache.save_round_one(key, first)
+    return first
+
+
+def _run_case(
+    case: dict, settings: Settings, client: Any, *, fresh: bool = False
+) -> tuple[Round, float]:
     """Run the case to the round it is about, answering re-asks along the way.
 
     A case that is not about vagueness must reach a verdict: otherwise every
@@ -66,9 +97,7 @@ def _run_case(case: dict, settings: Settings, client: Any) -> tuple[Round, float
     about the prompt and everything about the harness.
     """
     attachments = _case_attachments(case, client, settings)
-    first = ask_questions(
-        case["idea"], attachments=attachments, settings=settings, client=client
-    )
+    first = _round_one(case, attachments, settings, client, fresh)
     spent = first.cost_usd
     if case.get("phase", "verdict") == "questions":
         return first, spent
@@ -113,9 +142,13 @@ def _run_case(case: dict, settings: Settings, client: Any) -> tuple[Round, float
 def _grade(case: dict, round_: Round) -> list[graders.GradeResult]:
     results = []
     for entry in case.get("graders", []):
-        name, kwargs = (entry, {}) if isinstance(entry, str) else (
-            entry["name"],
-            {k: v for k, v in entry.items() if k != "name"},
+        name, kwargs = (
+            (entry, {})
+            if isinstance(entry, str)
+            else (
+                entry["name"],
+                {k: v for k, v in entry.items() if k != "name"},
+            )
         )
         grader = graders.STRUCTURAL.get(name)
         if grader is None:
@@ -125,12 +158,29 @@ def _grade(case: dict, round_: Round) -> list[graders.GradeResult]:
     return results
 
 
+def _answers_text(case: dict) -> str:
+    answers = case.get("answers", "")
+    return answers if isinstance(answers, str) else "\n\n".join(answers)
+
+
+def _rubric_line(result: RubricResult) -> str:
+    dims = "  ".join(f"{k}={v}" for k, v in result.scores.items())
+    return f"        score {result.score:.0f}/100  {dims}"
+
+
 def main(
-    cases_dir: str | None = None, as_json: bool = False, production: bool = False
+    cases_dir: str | None = None,
+    as_json: bool = False,
+    production: bool = False,
+    use_rubric: bool = True,
+    only: list[str] | None = None,
+    fresh: bool = False,
+    save_baseline: bool = False,
 ) -> int:
     settings = eval_settings(production)
     if not settings.has_api_key:
-        print("No ANTHROPIC_API_KEY set; the eval suite needs one.", file=sys.stderr)
+        key = "GROQ_API_KEY" if settings.provider == "groq" else "ANTHROPIC_API_KEY"
+        print(f"No {key} set; the eval suite needs one.", file=sys.stderr)
         return 1
 
     # Principle III: this suite spends real money, so it must not run unattended.
@@ -144,41 +194,147 @@ def main(
         )
         return 2
 
+    if save_baseline and only:
+        print("A baseline is the whole suite: drop --case to save one.", file=sys.stderr)
+        return 1
+
     client = build_client()
     cases = load_cases(Path(cases_dir) if cases_dir else CASES_DIR)
+    if only:
+        cases = [c for c in cases if any(o in c["name"] or o in Path(c["path"]).stem for o in only)]
+        if not cases:
+            print(f"No case matches {only}.", file=sys.stderr)
+            return 1
+    rubric = load_rubric() if use_rubric else None
+    passed_before = {} if fresh else cache.load_results()
+    passed_now: dict[str, dict] = dict(passed_before)
     report: list[dict] = []
     total_cost = 0.0
+    dimension_scores: dict[str, list[int]] = {}
 
     for case in cases:
+        run_settings = case_settings(case, settings, production)
+        attachment_bytes = [(CASES_DIR / p).read_bytes() for p in case.get("attachments", [])]
+        key = cache.case_key(case, attachment_bytes, run_settings, rubric is not None)
+        previous = passed_before.get(case["path"])
+        if previous and previous.get("key") == key:
+            # Nothing that could change the answer has changed since it passed.
+            entry = {**previous["entry"], "cost_usd": 0.0, "cached": True}
+            report.append(entry)
+            for name, value in entry["dimensions"].items():
+                dimension_scores.setdefault(name, []).append(value)
+            if not as_json:
+                print(f"[PASS] {case['name']}  (cached, $0)")
+            continue
+
+        scored: RubricResult | None = None
         try:
-            round_, cost = _run_case(case, settings, client)
+            round_, cost = _run_case(case, run_settings, client, fresh=fresh)
             results = _grade(case, round_)
             failures = [r for r in results if not r.passed]
         except BieError as exc:
             detail = f"{exc.message} [{exc.code}] {(exc.detail or '')[:400]}"
-            results, failures, cost = [], [graders.GradeResult("run", False, detail)], 0.0
+            round_, results, cost = None, [], 0.0
+            failures = [graders.GradeResult("run", False, detail)]
+        if round_ is not None and rubric is not None and case.get("rubric", True):
+            try:
+                scored = score_round(
+                    round_,
+                    idea=case["idea"],
+                    answers=_answers_text(case),
+                    settings=run_settings,
+                    client=client,
+                    rubric=rubric,
+                )
+            except BieError as exc:
+                # A judge failure is not a prompt failure: say so, keep the structural grades.
+                failures.append(
+                    graders.GradeResult("rubric", False, f"judge failed: {exc.message}")
+                )
+        if scored is not None:
+            cost += scored.cost_usd
+            for name in scored.below_floor:
+                failures.append(
+                    graders.GradeResult(
+                        f"rubric:{name}", False, f"{scored.scores[name]}/5: {scored.evidence[name]}"
+                    )
+                )
+            if scored.missing:
+                failures.append(
+                    graders.GradeResult("rubric", False, f"judge skipped {scored.missing}")
+                )
+            for name, value in scored.scores.items():
+                dimension_scores.setdefault(name, []).append(value)
         total_cost += cost
-        report.append(
-            {
-                "case": case["name"],
-                "passed": not failures,
-                "cost_usd": round(cost, 4),
-                "failures": [{"grader": f.name, "detail": f.detail} for f in failures],
-            }
-        )
+        entry = {
+            "case": case["name"],
+            "passed": not failures,
+            "cost_usd": round(cost, 4),
+            "score": scored.score if scored else None,
+            "dimensions": scored.scores if scored else {},
+            "failures": [{"grader": f.name, "detail": f.detail} for f in failures],
+        }
+        report.append(entry)
+        # Only passes are remembered: a failure must be rerun to be believed fixed.
+        if failures:
+            passed_now.pop(case["path"], None)
+        else:
+            passed_now[case["path"]] = {"key": key, "entry": entry}
+        cache.save_results(passed_now)
         if not as_json:
             mark = "PASS" if not failures else "FAIL"
             print(f"[{mark}] {case['name']}  (${cost:.4f})")
+            if scored is not None:
+                print(_rubric_line(scored))
             for failure in failures:
                 print(f"        {failure.name}: {failure.detail}")
 
     passed = sum(1 for r in report if r["passed"])
     rate = passed / len(report) if report else 0.0
+    case_scores = [r["score"] for r in report if r["score"] is not None]
+    mean_score = round(sum(case_scores) / len(case_scores), 1) if case_scores else None
+    dimension_means = {k: round(sum(v) / len(v), 2) for k, v in sorted(dimension_scores.items())}
+    summary = {
+        "cases": report,
+        "pass_rate": rate,
+        "mean_score": mean_score,
+        "dimension_means": dimension_means,
+        "total_cost_usd": total_cost,
+    }
     if as_json:
-        print(json.dumps({"cases": report, "pass_rate": rate, "total_cost_usd": total_cost}, indent=2))
+        print(json.dumps(summary, indent=2))
     else:
         print(f"\n{passed}/{len(report)} passed ({rate:.0%}) · ${total_cost:.2f} total")
-    return 0 if passed == len(report) else 1
+        if mean_score is not None:
+            print(f"Quality score: {mean_score:.0f}/100")
+            for name, mean in dimension_means.items():
+                print(f"  {name:<26} {mean:.2f}/5")
+
+    if save_baseline:
+        baseline.save(summary, settings)
+        print(f"\nBaseline saved to {baseline.BASELINE_PATH.name}.", file=sys.stderr)
+        return 0
+
+    saved = baseline.load()
+    if saved is None:
+        return 0 if passed == len(report) else 1
+
+    # Against a baseline, the question is "did it get worse", not "is it perfect":
+    # a case that already failed in the baseline is known, not new.
+    comparison = baseline.compare(summary, saved, settings, partial=bool(only))
+    out = sys.stderr if as_json else sys.stdout
+    print(f"\nAgainst the baseline of {saved['saved_at']}:", file=out)
+    for warning in comparison.warnings:
+        print(f"  ! {warning}", file=out)
+    for line in comparison.lines:
+        print(f"  {line}", file=out)
+    if comparison.regressions:
+        print("REGRESSIONS:", file=out)
+        for regression in comparison.regressions:
+            print(f"  ✗ {regression}", file=out)
+        return 1
+    print("No regressions.", file=out)
+    return 0
 
 
 if __name__ == "__main__":

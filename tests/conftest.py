@@ -112,6 +112,12 @@ class FakeAnthropic:
 
 
 @pytest.fixture(autouse=True)
+def claude_provider(monkeypatch):
+    """The suite was written against the Claude path; Groq tests opt in explicitly."""
+    monkeypatch.setenv("BIE_PROVIDER", "anthropic")
+
+
+@pytest.fixture(autouse=True)
 def isolated_ledger(tmp_path, monkeypatch):
     """No test may touch the real spend ledger in ~/.bie/spend.json."""
     from bie import budget

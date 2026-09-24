@@ -12,7 +12,8 @@ vercel link             # pick or create the project
 ## Environment variables
 
 ```bash
-vercel env add ANTHROPIC_API_KEY production
+vercel env add GROQ_API_KEY production               # free open model (default provider)
+vercel env add ANTHROPIC_API_KEY production          # only with BIE_PROVIDER=anthropic
 vercel env add BIE_MAX_ATTACHMENT_MB production      # 4 — Vercel caps request bodies at 4.5 MB
 vercel env add BIE_MAX_COST_PER_DAY_USD production   # 5.00
 ```
