@@ -1,8 +1,8 @@
 """Graders for the eval suite.
 
 Structural graders are pure functions over a validated Round: they cost nothing and
-they are unit tested. The judge grader asks a cheaper model to score the things a
-regular expression cannot see, such as tone.
+they are unit tested. Quality -- the things a regular expression cannot see -- is
+scored by the judge model against rubric.yaml; see rubric.py.
 """
 
 from __future__ import annotations
@@ -11,9 +11,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from bie.claude import complete
-from bie.config import Settings
-from bie.schemas import JudgeVerdict, Round
+from bie.schemas import Round
 
 VERDICT_WORDS = re.compile(r"\b(verdict|don'?t proceed|proceed only after)\b", re.IGNORECASE)
 PADDING = re.compile(
@@ -138,32 +136,6 @@ def no_padding(round_: Round) -> GradeResult:
     blob = round_.model_dump_json()
     hits = PADDING.findall(blob)
     return _ok("no_padding", not hits, f"found {hits}")
-
-
-JUDGE_SCHEMA_PROMPT = (
-    "You are grading one output of another model against a rubric. Be strict. "
-    "Score 1 (unusable) to 5 (excellent). passed is true only at 4 or 5."
-)
-
-
-def judge(round_: Round, rubric: str, *, settings: Settings, client: Any) -> JudgeVerdict:
-    """The grader for things structure cannot see. Uses the cheaper judge model."""
-    judge_settings = settings
-    reply = complete(
-        client,
-        system=JUDGE_SCHEMA_PROMPT,
-        instruction=f"RUBRIC:\n{rubric}",
-        messages=[
-            {
-                "role": "user",
-                "content": f"[OUTPUT]\n{round_.model_dump_json(indent=2)}\n[/OUTPUT]",
-            }
-        ],
-        schema=JudgeVerdict,
-        effort="low",
-        settings=judge_settings,
-    )
-    return reply.parsed
 
 
 STRUCTURAL: dict[str, Any] = {

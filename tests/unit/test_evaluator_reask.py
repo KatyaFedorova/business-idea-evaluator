@@ -97,3 +97,22 @@ def test_the_loop_stops_asking_after_the_configured_limit(
     instruction = client.messages.calls[-1]["system"][-1]["text"]
     assert "last round of questions" in instruction.lower() or "must give" in instruction.lower()
     assert round_.kind == "verdict"
+
+
+def test_past_the_reask_limit_a_reask_is_rejected_not_shown(fake_anthropic, valid_question_set):
+    from dataclasses import replace
+
+    from bie.errors import InvalidModelOutput
+    from bie.schemas import FinalDecision
+
+    valid_question_set["note"] = "Still vague."
+    client = fake_anthropic(_decision(decision="reask", reask=valid_question_set, report=None))
+    with pytest.raises(InvalidModelOutput):
+        evaluate(
+            IDEA,
+            rounds=_rounds(valid_question_set),
+            answers=[FounderMessage(text="some time")],
+            client=client,
+            settings=replace(Settings(), max_reasks=0),
+        )
+    assert client.messages.calls[-1]["output_format"] is FinalDecision

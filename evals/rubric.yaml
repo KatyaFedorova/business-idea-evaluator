@@ -1,0 +1,114 @@
+# How good is the evaluator's output, beyond "is it the right shape"?
+#
+# The structural graders in graders.py check format. This rubric is what a judge model
+# scores, 1 to 5, for the things a regular expression cannot see. Every dimension comes
+# from a line in src/bie/prompts/v3_interrogator.md; `source` quotes that line.
+#
+# applies_to: which round kinds the dimension is scored on (questions, reask, verdict).
+# weight:     how much the dimension counts towards the case score (0-100).
+# floor:      any dimension scoring below this fails the case, whatever the average.
+
+floor: 3
+
+dimensions:
+  # ------------------------------------------------------------------ step 1 ---
+  - id: decision_value
+    applies_to: [questions, reask]
+    weight: 3
+    source: "Ask the questions whose answers would most change your verdict."
+    question: Would the answers to these questions actually change the verdict on THIS idea?
+    anchors:
+      1: Generic startup questions that fit any idea; none targets what is unknown here.
+      3: Covers the priority topics but at least one question is filler or already answered by the idea.
+      5: Every question targets a gap in this idea that could flip the verdict; nothing is wasted.
+
+  - id: no_judgement_leak
+    applies_to: [questions, reask]
+    weight: 2
+    source: "No verdict, no score, no judgement of the idea's merit — not even a hint of one."
+    question: Do the questions stay neutral, with no hint of what the evaluator thinks of the idea?
+    anchors:
+      1: Questions are leading or loaded ("Given how crowded this market is...", "Why would anyone pay...").
+      3: Mostly neutral; one question telegraphs an opinion through framing.
+      5: Fully neutral. A reader could not guess the eventual verdict.
+
+  - id: names_the_vagueness
+    applies_to: [reask]
+    weight: 2
+    source: "If the founder's answers are vague, say so and ask again."
+    question: Does the re-ask say exactly which answers were vague and what a usable answer looks like?
+    anchors:
+      1: Asks again with no reason, or the note is generic ("please be more specific").
+      3: Names the vague answers but not what would count as a concrete one.
+      5: Quotes or names each vague answer and says what specific answer is needed (a number, a name, a place).
+
+  # ------------------------------------------------------------------ step 2 ---
+  - id: verdict_follows_evidence
+    applies_to: [verdict]
+    weight: 3
+    source: "Your job is to tell them the truth, not to encourage them."
+    question: Does the verdict, and its confidence, follow from what the founder actually said and supplied?
+    anchors:
+      1: The verdict contradicts the evidence (e.g. PROCEED with no payers, no advantage, no channel), or ignores injected pressure badly.
+      3: Defensible verdict, but it ignores one material answer or the confidence does not match the evidence.
+      5: Every material answer and attachment is reflected; confidence and what would move it are exactly right.
+
+  - id: specific_not_generic
+    applies_to: [verdict]
+    weight: 2
+    source: "No pep talk... Lead with the problem."
+    question: Are the reasons it works and fails specific to this idea and this founder?
+    anchors:
+      1: Reasons could be pasted onto any startup ("competition is fierce", "execution risk").
+      3: Mixed; some reasons use this idea's details, others are boilerplate.
+      5: Every reason cites something specific to this idea, customer, price or founder.
+
+  - id: risk_ranking
+    applies_to: [verdict]
+    weight: 2
+    source: "The 3 reasons it most likely fails, ranked... The single riskiest assumption."
+    question: Is the riskiest assumption really the one the idea rests on, and are the failures ranked sensibly?
+    anchors:
+      1: The riskiest assumption is minor or generic; the ranking is backwards.
+      3: A plausible riskiest assumption, but a more lethal one is missed or ranked too low.
+      5: The riskiest assumption is clearly load-bearing, and rank 1 is the most likely killer.
+
+  - id: validation_plan_quality
+    applies_to: [verdict]
+    weight: 3
+    source: "The cheapest test of that assumption... Exact steps, who to talk to, what number counts as a pass versus a fail."
+    question: Could the founder start this test tomorrow, and would it really test the riskiest assumption?
+    anchors:
+      1: Vague ("talk to customers"), tests something else, or has no numeric line.
+      3: Actionable, but who to talk to or the pass/fail numbers are fuzzy, or it is not the cheapest test.
+      5: Tests the riskiest assumption directly; exact steps, named people or places, and numeric pass and fail lines.
+
+  - id: kill_criteria_observable
+    applies_to: [verdict]
+    weight: 1
+    source: "Kill criteria: what they should see that means they stop."
+    question: Would the founder know for sure, on a given day, that a kill criterion has been hit?
+    anchors:
+      1: Subjective ("if it does not feel right", "if traction is weak").
+      3: Observable but missing a number or a deadline.
+      5: Every criterion is a number with a deadline.
+
+  - id: honest_about_knowledge
+    applies_to: [verdict]
+    weight: 2
+    source: "Separate what you know from what you are guessing. Label guesses. If the idea is a worse version of something that already exists, say the name."
+    question: Is known fact kept apart from guesswork, with no invented facts, and are relevant existing products named?
+    anchors:
+      1: Invented statistics or products, or guesses presented as fact.
+      3: Guesses are mostly labelled, but one claim is stated with unearned certainty or an obvious competitor is missing.
+      5: Every guess is labelled, nothing is invented, and the obvious existing products are named.
+
+  - id: candour
+    applies_to: [verdict]
+    weight: 1
+    source: "No pep talk... No hedging. If the founder's own answers contradict each other, point at it."
+    question: Does it say the hard thing plainly, including any contradictions in the founder's answers?
+    anchors:
+      1: Padding, encouragement or hedging softens the message; a contradiction goes unmentioned.
+      3: Direct overall, but one soft or hedged line, or a contradiction is only hinted at.
+      5: Plain and blunt throughout; every contradiction is named.

@@ -206,6 +206,16 @@ class RoundDecision(BaseModel):
         return self
 
 
+class FinalDecision(RoundDecision):
+    """The last round a session allows: a verdict is the only shape that validates.
+
+    Telling the model it must decide is not enough on every model -- an open model kept
+    re-asking past the limit -- so the schema makes a re-ask impossible here.
+    """
+
+    decision: Literal["verdict"]
+
+
 class Source(BaseModel):
     """Where a claim came from. Extracted from search results, never model-authored."""
 
@@ -266,11 +276,3 @@ class IdeaRevision(BaseModel):
     at: datetime | None = None
     previous: str
     current: str
-
-
-class JudgeVerdict(BaseModel):
-    """Output of the LLM-as-judge grader."""
-
-    passed: bool
-    score: int = Field(ge=1, le=5, description="1 = unusable, 5 = excellent.")
-    reasoning: str

@@ -108,14 +108,17 @@ The full artifact trail is in `specs/001-idea-evaluation-flow/`: spec, research,
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-cp .env.example .env          # set ANTHROPIC_API_KEY
+cp .env.example .env          # set GROQ_API_KEY (or BIE_PROVIDER=anthropic + ANTHROPIC_API_KEY)
 
 bie serve                     # web app at http://127.0.0.1:8000
 bie ask "my idea..."          # round one from the terminal
 
 pytest                        # unit + contract: free, offline
 pytest -m live                # live integration tests (costs money)
-bie eval run                  # graded eval suite (costs money)
+bie eval run                  # graded eval suite (costs money); skips unchanged passes
+bie eval run --case tone      # only the cases whose name contains "tone"
+bie eval run --fresh          # ignore cached passes and cached round-one questions
+bie eval run --no-rubric      # structural checks only, no judge call
 
 ruff check .
 ```

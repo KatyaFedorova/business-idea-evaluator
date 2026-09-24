@@ -39,8 +39,16 @@ class ModelReply:
     research_status: ResearchStatus = "unavailable"
 
 
-def build_client(api_key: str | None = None) -> anthropic.Anthropic:
-    """Credentials come from the environment; never from an argument in normal use."""
+def build_client(api_key: str | None = None) -> Any:
+    """Credentials come from the environment; never from an argument in normal use.
+
+    BIE_PROVIDER picks the backend. Groq's client answers the same calls, so nothing
+    downstream knows which one it got.
+    """
+    if Settings().provider == "groq":
+        from bie.groq import GroqClient
+
+        return GroqClient(api_key)
     return anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
 
 

@@ -84,8 +84,9 @@ Client-held. `id`, `created_at`, `idea`, `rounds` (ordered), `attachments`, `tot
 Add `web_searches` (int, default 0) so the per-search charge is visible next to token cost.
 Existing fields — model, input/output/cache tokens, latency, `cost_usd` — are unchanged.
 
-### JudgeVerdict *(existing, unchanged)*
-Used by the eval graders.
+### Rubric scores *(eval-only)*
+The judge's 1-5 score per dimension of `evals/rubric.yaml` lives in `evals/rubric.py`
+(`RubricScores`), not in the app's schemas. It replaces the single-score `JudgeVerdict`.
 
 ## Validation rules drawn from requirements
 

@@ -1,5 +1,7 @@
 name: no pep talk, no padding
 phase: verdict
+# No grader here looks at research, so searches are paid for and never read.
+max_searches: 0
 idea: >-
   A marketplace connecting dog owners with retired vets for home visits. $30 a visit,
   we take 20 percent.

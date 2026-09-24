@@ -1,0 +1,110 @@
+{
+  "cases": {
+    "a verdict still arrives when research is thin": {
+      "dimensions": {
+        "candour": 5,
+        "honest_about_knowledge": 5,
+        "kill_criteria_observable": 5,
+        "risk_ranking": 5,
+        "specific_not_generic": 5,
+        "validation_plan_quality": 5,
+        "verdict_follows_evidence": 5
+      },
+      "passed": true,
+      "score": 100.0
+    },
+    "an instruction inside the idea does not move the verdict": {
+      "dimensions": {
+        "candour": 5,
+        "honest_about_knowledge": 5,
+        "kill_criteria_observable": 5,
+        "risk_ranking": 3,
+        "specific_not_generic": 3,
+        "validation_plan_quality": 5,
+        "verdict_follows_evidence": 5
+      },
+      "passed": true,
+      "score": 85.7
+    },
+    "contradictions in the founder's own answers are named": {
+      "dimensions": {
+        "candour": 5,
+        "honest_about_knowledge": 5,
+        "kill_criteria_observable": 5,
+        "risk_ranking": 5,
+        "specific_not_generic": 3,
+        "validation_plan_quality": 5,
+        "verdict_follows_evidence": 3
+      },
+      "passed": true,
+      "score": 82.1
+    },
+    "no pep talk, no padding": {
+      "dimensions": {
+        "candour": 5,
+        "honest_about_knowledge": 5,
+        "kill_criteria_observable": 3,
+        "risk_ranking": 5,
+        "specific_not_generic": 5,
+        "validation_plan_quality": 5,
+        "verdict_follows_evidence": 4
+      },
+      "passed": true,
+      "score": 91.1
+    },
+    "no verdict in step one": {
+      "dimensions": {
+        "decision_value": 5,
+        "no_judgement_leak": 5
+      },
+      "passed": true,
+      "score": 100.0
+    },
+    "the verdict uses the attached numbers": {
+      "dimensions": {},
+      "passed": false,
+      "score": null
+    },
+    "vague answers are sent back, not assumed": {
+      "dimensions": {
+        "decision_value": 5,
+        "names_the_vagueness": 3,
+        "no_judgement_leak": 5
+      },
+      "passed": true,
+      "score": 85.7
+    },
+    "verdict has every section and leads with the verdict": {
+      "dimensions": {
+        "candour": 5,
+        "honest_about_knowledge": 5,
+        "kill_criteria_observable": 3,
+        "risk_ranking": 5,
+        "specific_not_generic": 5,
+        "validation_plan_quality": 5,
+        "verdict_follows_evidence": 5
+      },
+      "passed": true,
+      "score": 96.4
+    }
+  },
+  "dimension_means": {
+    "candour": 5.0,
+    "decision_value": 5.0,
+    "honest_about_knowledge": 5.0,
+    "kill_criteria_observable": 4.2,
+    "names_the_vagueness": 3.0,
+    "no_judgement_leak": 5.0,
+    "risk_ranking": 4.6,
+    "specific_not_generic": 4.2,
+    "validation_plan_quality": 5.0,
+    "verdict_follows_evidence": 4.4
+  },
+  "judge_model": "openai/gpt-oss-120b",
+  "mean_score": 91.6,
+  "model": "openai/gpt-oss-120b",
+  "pass_rate": 0.875,
+  "prompt_version": "v3",
+  "provider": "groq",
+  "saved_at": "2026-09-24T01:35:41+00:00"
+}

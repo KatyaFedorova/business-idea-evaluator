@@ -1,5 +1,7 @@
 name: the verdict uses the attached numbers
 phase: verdict
+# No grader here looks at research, so searches are paid for and never read.
+max_searches: 0
 attachments:
   - fixtures/preorders.csv
 idea: >-

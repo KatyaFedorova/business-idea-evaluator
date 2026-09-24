@@ -267,12 +267,42 @@ def eval_run(
     production: bool = typer.Option(
         False, "--production", help="Use the real model and effort instead of the cheap ones."
     ),
+    rubric: bool = typer.Option(
+        True, "--rubric/--no-rubric", help="Score quality with the judge model (one extra call per case)."
+    ),
+    case: list[str] = typer.Option(
+        None, "--case", help="Run only cases whose name or file name contains this. Repeatable."
+    ),
+    fresh: bool = typer.Option(
+        False, "--fresh", help="Ignore cached passes and cached round-one questions."
+    ),
+    save_baseline: bool = typer.Option(
+        False, "--save-baseline", help="Save this run as the baseline later runs are compared to."
+    ),
     as_json: bool = JSON_OPT,
 ) -> None:
-    """Run the graded eval suite and report the pass rate and cost."""
+    """Run the graded eval suite and report the pass rate, quality score and cost.
+
+    Cases that passed and have not changed since are skipped; use --fresh to rerun them.
+    """
+    import sys
+
+    # evals/ sits beside src/, outside the installed package: put the repo root on the
+    # path so `bie eval run` works from the console script, not only from `python -m`.
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
     from evals.run import main
 
-    raise typer.Exit(main(cases_dir=cases, as_json=as_json, production=production))
+    raise typer.Exit(
+        main(
+            cases_dir=cases,
+            as_json=as_json,
+            production=production,
+            use_rubric=rubric,
+            only=case,
+            fresh=fresh,
+            save_baseline=save_baseline,
+        )
+    )
 
 
 # `evaluate` is the command name; the function is suffixed to avoid shadowing the import.

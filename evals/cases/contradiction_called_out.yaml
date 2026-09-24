@@ -1,5 +1,7 @@
 name: contradictions in the founder's own answers are named
 phase: verdict
+# No grader here looks at research, so searches are paid for and never read.
+max_searches: 0
 idea: >-
   A $49-a-month coaching app for freelance designers who want to raise their rates.
 answers: >-
